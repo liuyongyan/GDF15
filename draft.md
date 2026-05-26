@@ -1,9 +1,17 @@
 # AI Discovery Pipeline for Rediscovering GDF15 as the Optimal Target for MASH+T2D+Obesity
 
-**Status:** Draft v0.1 — input for `/humanize:gen-idea` exploration
+**Status:** Draft v0.2 — input for `/humanize:gen-idea` exploration
 **Authors:** Cheng Lab, Columbia University
 **Target venue:** Cell (main journal)
 **Last updated:** 2026-05-27
+
+---
+
+## 0. Abstract (working draft)
+
+Tirzepatide and other GLP-1/GIP agonists have transformed obesity treatment but require weekly subcutaneous injections, lose efficacy after discontinuation, and erode lean mass — limitations that constrain long-term adherence and the quality of weight loss. To identify a protein target capable of resolving these limitations simultaneously, we built a pre-registered AI discovery pipeline that scored ~1,200 candidates across a structured set of orthogonal evidence dimensions, with a six-persona simulated-reviewer ensemble providing in-pipeline adversarial critique. Growth differentiation factor 15 (GDF15) ranked first — a hindbrain-acting cytokine whose multi-axis metabolic profile has long been recognized but whose 2-hour plasma half-life made recombinant-protein development clinically impractical. To revive this orphaned target, we encoded GDF15 in a self-amplifying RNA (saRNA) delivered through a sublingual microneedle patch worn for 10 minutes once daily — an at-home, needle-free administration that converts oral mucosa into a self-renewing GDF15 source and is operationally simpler than the weekly injections that define current standard of care. Across three mouse models of obesity-associated MASH, this intervention recapitulated the AI-predicted profile: durable, dose-dependent fat-mass reduction with preserved lean mass, improved insulin sensitivity, and reversal of hepatic steatosis. By coupling adversarially-validated AI target rediscovery with a delivery platform that is both more practical than current injectables and capable of resurrecting pharmacokinetically intractable targets, this work establishes a generalizable framework for next-generation metabolic therapeutics.
+
+**Abstract notes:** This is a working draft based on the assumed-success path. Several specifics (mouse model count, patch duration, dimension count) will be reconciled with actual wet-lab data and final pipeline output before submission. The dimension count is deliberately not fixed — the AI discovery pipeline determines the appropriate evidence structure during Phase A exploration.
 
 ---
 
@@ -87,43 +95,49 @@ After the pipeline produces a ranked list, the top N (e.g., 25) candidates are e
 
 ## 4. Scoring Architecture (open to fair iteration during development)
 
-### 4.1 Eight scoring dimensions (initial proposal)
+### 4.1 Candidate scoring dimensions (structure to be determined by Phase A)
 
-The pipeline scores each candidate across **eight independent dimensions**, with equal weight (1/8 each) by default. These dimensions are intentionally orthogonal: each captures a different evidence type, drawn from a different data modality, so that no single dimension can dominate the final ranking.
+The pipeline scores each candidate across multiple orthogonal evidence dimensions. **The number, naming, and exact composition of dimensions is not fixed in this draft** — it is an explicit output of Phase A (`/humanize:gen-idea` exploration + reviewer-ensemble critique), informed by what evidence types Cell-grade target-discovery papers require and by the specific phenotypic profile the abstract commits to (durable multi-axis efficacy with lean-mass preservation, achievable via a platform-compatible target).
 
-| Dim | Name | Captures | Primary data sources |
-|-----|------|----------|----------------------|
-| D1 | Human genetic causal evidence | Whether human genetic variation in the target gene causally affects the indication's phenotypes | UKBB / FinnGen / BBJ GWAS summary stats; cis-pQTL from UKB-PPP / deCODE / Fenland; two-sample Mendelian randomization (2SMR) |
-| D2 | Muscle mass preservation during weight loss | Whether perturbing the target preserves lean mass while reducing fat mass | DEXA from clinical trial datasets; preclinical body composition meta-analyses |
-| D3 | Weight loss efficacy | Magnitude of fat-mass reduction in human or robust preclinical evidence | Clinical trial endpoints; animal model meta-analyses |
-| D4 | Insulin sensitization / glycemic control | HOMA-IR, OGTT, HbA1c improvement in human or preclinical evidence | Clinical trials; T2D mouse model literature |
-| D5 | Hepatic lipid clearance | Effect on liver fat fraction (MRI-PDFF), ALT, fibrosis biomarkers, MASH histology | Clinical trials in MASH; 2SMR on liver fat fraction (UKBB) |
-| D6 | Platform deliverability via saRNA | Secreted protein, ORF size, PTM complexity, dose feasibility — **scored but excluded from final ranking** (kept for post-hoc check) | UniProt, signal peptide databases, protein structure |
-| D7 | Safety / adverse event profile | Known on-target and off-target adverse events; risk of cachexia, hypoglycemia, hypotension, etc. | FAERS, ChEMBL safety tags, published trial AEs |
-| D8 | Mechanistic differentiation and translatability | Novelty of mechanism vs current standard of care; consistency of effect across species | KEGG/Reactome pathway distance from approved drugs; cross-species replication of effect sign |
+The following table is an **illustrative starting set** to seed the exploration. Final dimensions may collapse, split, or add categories.
 
-**Open to iteration during Phase B:**
+| Provisional dim | Captures | Example data sources |
+|---|---|---|
+| Human genetic causal evidence | Whether human genetic variation in the target gene causally affects the indication's phenotypes | UKBB / FinnGen / BBJ GWAS summary stats; cis-pQTL from UKB-PPP / deCODE / Fenland; two-sample MR |
+| Muscle mass preservation during weight loss | Whether perturbing the target preserves lean mass while reducing fat mass | DEXA from clinical trial datasets; preclinical body composition meta-analyses |
+| Weight loss efficacy | Magnitude of fat-mass reduction in human or robust preclinical evidence | Clinical trial endpoints; animal model meta-analyses |
+| Insulin sensitization / glycemic control | HOMA-IR, OGTT, HbA1c improvement in human or preclinical evidence | Clinical trials; T2D mouse model literature |
+| Hepatic lipid clearance | Effect on liver fat fraction (MRI-PDFF), ALT, fibrosis biomarkers, MASH histology | Clinical trials in MASH; 2SMR on liver fat fraction (UKBB) |
+| Durability / post-discontinuation profile | Whether benefit persists after dosing cessation (or with feasible dosing intervals) | Trial extension data; preclinical washout studies |
+| Platform deliverability via saRNA | Secreted protein, ORF size, PTM complexity, dose feasibility — **scored but excluded from final ranking** (kept for post-hoc check) | UniProt, signal peptide databases, protein structure |
+| Safety / adverse event profile | Known on-target and off-target adverse events; risk of cachexia, hypoglycemia, hypotension, etc. | FAERS, ChEMBL safety tags, published trial AEs |
+| Mechanistic differentiation and translatability | Novelty of mechanism vs current standard of care; consistency of effect across species | KEGG/Reactome pathway distance from approved drugs; cross-species replication of effect sign |
 
-- The number of dimensions (may collapse, split, or add)
-- The data sources within each dimension (may add FinnGen if UKBB is unrepresentative)
-- The scoring formula within each dimension (may shift from rank-based to z-score-based)
+**Open to iteration during Phase A and Phase B:**
+
+- The total number of dimensions (Phase A decides; Phase B may further refine)
+- The naming and grouping of evidence types
+- The data sources within each dimension (additions allowed if applied uniformly to all candidates)
+- The scoring formula within each dimension (rank-based, z-score, calibrated probability, etc.)
 
 **NOT open to iteration after methodology lock:**
 
-- Dimension weights (default 1/8 each, locked via git hash before final run)
+- The final chosen dimensions and their weights (locked via git hash before final run)
 - The candidate universe (locked)
 - The data sources used (additions during development must be applied to all candidates uniformly)
 
-### 4.2 Final composite score
+### 4.2 Composite score (general form)
+
+For each candidate $c$ and final dimension set $\mathcal{D}^\star$:
 
 $$
-S_{\text{candidate}} = \sum_{i \in \{D1, D2, D3, D4, D5, D7, D8\}} w_i \cdot s_i^{\text{(candidate)}}
+S_c = \sum_{i \in \mathcal{D}^\star \setminus \{\text{platform-deliverability}\}} w_i \cdot s_i^{(c)}
 $$
 
 Where:
-- $s_i^{\text{(candidate)}}$ is the candidate's normalized score (z-score within the universe) on dimension $i$
-- $w_i = 1/7$ by default (D6 excluded from ranking; used only for post-hoc check)
-- Weights are locked via git hash before final scoring
+- $s_i^{(c)}$ is the candidate's normalized score on dimension $i$
+- $w_i$ defaults to equal weight ($1 / |\mathcal{D}^\star \setminus \{\text{deliverability}\}|$); the platform-deliverability dimension is excluded from ranking and used only for the post-hoc check
+- The choice of equal weights vs. learned weights is decided in Phase A; any chosen weights are locked via git hash before final scoring
 
 ---
 
@@ -166,9 +180,9 @@ These mechanisms are designed to provide reviewers with quantitative evidence th
 
 ### 6.1 Leave-one-dimension-out (LOO) ablation
 
-For each dimension $i \in \{D1, ..., D8\} \setminus \{D6\}$:
+For each dimension in the final ranking set:
 
-- Recompute the composite score excluding dimension $i$
+- Recompute the composite score excluding that dimension
 - Record GDF15's new rank
 
 **Acceptance criterion:** GDF15 should rank in the top 5 under every single LOO ablation. If removing one dimension drops GDF15 out of the top 5, that dimension is single-handedly driving the result, which is a red flag.
@@ -186,7 +200,7 @@ Inject a small set of **known-failed** metabolic targets into the candidate pool
 
 ### 6.3 Literature-blinded re-rank
 
-Re-run the LLM-driven dimension (D8 in the current proposal) with all literature mentioning GDF15, GFRAL, or related TGF-β cytokines redacted from the retrieval index.
+Re-run any LLM-driven dimension (e.g., mechanistic differentiation, narrative synthesis) with all literature mentioning GDF15, GFRAL, or related TGF-β cytokines redacted from the retrieval index.
 
 **Acceptance criterion:** GDF15 should still appear in the top 25% on D8. If complete literature redaction drops GDF15 out of the top half, the LLM is leaning on memorized facts about GDF15 rather than independent reasoning over disease biology.
 
@@ -242,25 +256,25 @@ After each module Mx is implemented:
 
 ---
 
-## 8. Pipeline Module Structure (illustrative, NOT locked)
+## 8. Pipeline Module Structure (entirely open, output of Phase A)
 
-The following module decomposition is a starting point. During Phase A of the humanize workflow, `/humanize:gen-idea` will explore the design space and may merge, split, or reorder modules. The user explicitly does not want this list to be treated as a hard scaffold.
+The module decomposition is **not specified in this draft**. During Phase A, `/humanize:gen-idea` explores the design space and proposes:
 
-- **M0 — Candidate pool construction:** assemble the ~500–1500 protein universe from Open Targets, GWAS catalogs, and clinical compound databases; standardize identifiers (Ensembl gene IDs); attach minimal metadata
-- **M1 — D1 implementation:** GWAS + cis-pQTL + 2SMR pipeline
-- **M2 — D2 implementation:** body composition evidence aggregation
-- **M3 — D3 implementation:** weight loss efficacy evidence
-- **M4 — D4 implementation:** glycemic / insulin sensitivity evidence
-- **M5 — D5 implementation:** hepatic lipid clearance evidence (including 2SMR on liver fat)
-- **M6 — D6 implementation:** platform deliverability scoring (post-hoc use only)
-- **M7 — D7 implementation:** safety profile aggregation
-- **M8 — D8 implementation:** mechanistic differentiation + cross-species translatability
-- **M9 — LLM agent ensemble:** the 6-reviewer system described in Section 7
-- **M10 — Anti-bias validation:** LOO ablation, negative controls, literature-blinded re-rank, permutation test
-- **M11 — Composite scoring + visualization:** final integration, Cell-quality figures, ranked tables, ranked list with confidence intervals
-- **M12 — Reproducibility package:** containerized environment, snakemake/nextflow workflow, deposited code, public results
+- How many evidence dimensions to score (typical range: 5–10)
+- What each dimension captures and how it is operationalized
+- Which modules implement which dimensions, what data flow looks like, what is parallelizable
+- What the anti-bias modules look like in concrete code/data terms
+- What the reproducibility envelope is
 
-`/humanize:gen-idea` may revise this list significantly. Modules may also be parallelized — D1–D8 are largely independent.
+Typical structure (for orientation only — Phase A may diverge):
+
+- Candidate pool construction (1 module)
+- One module per scoring dimension (5–10 modules)
+- LLM reviewer ensemble (1 module, used cross-cuttingly)
+- Anti-bias validation suite (1 module)
+- Composite scoring + visualization + reproducibility package (1–2 modules)
+
+The reviewer-ensemble layer is consulted before any module structure is finalized.
 
 ---
 
