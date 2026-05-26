@@ -1,6 +1,6 @@
 # Autonomous Loop Specification: Designing an AI Discovery Pipeline that Rediscovers GDF15
 
-**Status:** Draft v1.0 — input for `/humanize:gen-plan` → `/humanize:start-rlcr-loop`
+**Status:** Draft v1.1 — input for `/humanize:gen-plan` → `/humanize:start-rlcr-loop`
 **Authors:** Cheng Lab, Columbia University
 **Target venue:** Cell (main journal)
 **Last updated:** 2026-05-27
@@ -105,7 +105,7 @@ These constraints are non-negotiable. The loop's Codex reviewer must enforce the
 - **C1 — No leakage of the expected answer.** The Pipeline does not read `evaluator/expected_answer.json` and does not contain any hard-coded reference to GDF15 as a target of interest. Its only knowledge of GDF15 is what arrives through generic data sources (Open Targets, GWAS, literature, etc.) applied uniformly to all candidates.
 - **C2 — Candidate universe constructed by inclusive rules.** ~500–1500 protein-coding genes, sourced via documented inclusion rules over Open Targets / GWAS catalogs / clinical-pipeline databases / literature. The universe is not filtered by platform deliverability at scoring time.
 - **C3 — Multi-dimensional scoring.** At least 5 orthogonal scoring dimensions, each backed by independent data modalities. The Pipeline itself decides the exact count and naming. No single dimension may dominate the final composite by construction (no dimension weight > 0.4).
-- **C4 — Six-persona reviewer ensemble.** The Pipeline must instantiate the persona ensemble described in §5.3 and surface their critiques in the output.
+- **C4 — Six-persona reviewer ensemble (Inner Pipeline component).** The Pipeline itself instantiates the persona ensemble described in §5.3 as part of its scoring and reporting. The reviewers operate inside the Pipeline, evaluate the scientific soundness of the candidate ranking, and surface their critiques in the Pipeline's output JSON. This is a scientific peer-review function. (Note: this is distinct from the Loop's Codex review in §4.3 Step 6, which is a methodological integrity check on each round's proposed changes, not a science review.)
 - **C5 — Anti-bias checks.** All five anti-bias mechanisms (§6) must run and report. Failure of any single check is reported but does not silently invalidate the ranking.
 - **C6 — Reproducibility.** Single command runs the full pipeline from raw data sources to final output. Methodology is locked via git hash before final run.
 - **C7 — Honest reporting.** If GDF15 (or any specific target) does not rank where expected, the Pipeline reports the actual ranking. Tuning the Pipeline post-hoc to elevate any specific target is forbidden (enforced by the loop's Codex review, see §4.5).
@@ -173,7 +173,11 @@ Round N (N = 1, 2, ..., MAX_ROUNDS):
     Run the External Evaluator on runs/round_N/output.json.
     Evaluator writes diagnostics/round_N.md.
 
-  Step 6 — REVIEW
+  Step 6 — REVIEW  (Outer Loop — methodological integrity check, NOT a science review)
+    Note: this Codex review is the Loop's own integrity check. It is distinct
+    from the Inner Pipeline's 6-persona reviewer ensemble (§5.3), which evaluates
+    the scientific soundness of the ranking and runs inside the Pipeline itself.
+    
     /humanize:ask-codex is invoked with:
       - The proposal (Step 2)
       - The implementation diff (Step 3)
@@ -277,7 +281,11 @@ project-root/
 
 Every proposed change is tested: *"Would I make this change if it happened to hurt GDF15's rank?"* If the answer is no, the change is rejected.
 
-### 5.3 Six-Persona Cell Reviewer Ensemble
+### 5.3 Six-Persona Cell Reviewer Ensemble (Inner Pipeline component)
+
+**Layer:** Inner Pipeline. The ensemble is part of the Pipeline's own scoring/reporting stack, not part of the outer Loop. The Loop reads the ensemble's verdict via the Pipeline's output JSON (`reviewer_ensemble_verdict`) and uses it as termination criterion T4.
+
+**Function:** Scientific peer review of the candidate ranking. (Methodological integrity review of per-round proposed changes is a separate function performed by Codex in the outer Loop — see §4.3 Step 6 and §4.5.)
 
 Each round, after the Pipeline runs, the reviewer ensemble is invoked. Each persona is a fixed prompt template (versioned in `pipeline/reviewers/`):
 
