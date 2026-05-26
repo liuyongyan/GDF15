@@ -1,0 +1,6 @@
+{
+  "mechanism": "cross_biobank_mr",
+  "phase_beta_drop_in_path": "pipeline/data_sources/snapshots/mr_<biobank>_<phenotype>.tsv",
+  "reason": "Round 0 bootstrap: harmonized multi-biobank GWAS summary statistics for exposure (cis-pQTL instruments per candidate) and outcomes (BMI, HbA1c, ALT, liver fat fraction) require ~10-50 GB of cached data per biobank (UKBB, FinnGen, BBJ). Not feasible to ingest in overnight Round 0. Pipeline architecture supports drop-in addition in Phase \u03b2 by populating pipeline/data_sources/snapshots/mr_*.tsv files. Recommended: defer to Phase \u03b2 engineering iteration with cached MR-Base summary statistics, or accept this as a documented limitation in FINAL_RESULT.md.",
+  "status": "OPTIONAL_SKIPPED"
+}

@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "notes": "Equal weights across 7 ranking-contributing dimensions (D1-D7). D8 platform_deliverability is excluded from composite per dimensions.json. Sum = 1.0, max weight = 0.143 (well under 0.40 cap).",
+  "weights": {
+    "D1_genetic_causal": 0.142857142857,
+    "D2_clinical_signal": 0.142857142857,
+    "D3_target_association_breadth": 0.142857142857,
+    "D4_literature_evidence": 0.142857142857,
+    "D5_secretion_and_modulatability": 0.142857142857,
+    "D6_mechanism_differentiation": 0.142857142857,
+    "D7_safety_proxy": 0.142857142858
+  },
+  "excluded_from_composite": [
+    "D8_platform_deliverability"
+  ]
+}

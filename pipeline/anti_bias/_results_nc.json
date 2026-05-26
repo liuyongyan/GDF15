@@ -1,0 +1,27 @@
+{
+  "controls": [
+    {
+      "control": "CETP",
+      "percentile": 12.437810945273633,
+      "rank": 25
+    },
+    {
+      "control": "HTR2C",
+      "percentile": 38.308457711442784,
+      "rank": 77
+    },
+    {
+      "control": "DGAT1",
+      "percentile": 79.1044776119403,
+      "rank": 159
+    },
+    {
+      "control": "CNR1",
+      "percentile": 33.83084577114428,
+      "rank": 68
+    }
+  ],
+  "mean_percentile_of_controls": 40.92039800995025,
+  "mechanism": "negative_controls",
+  "universe_size": 201
+}

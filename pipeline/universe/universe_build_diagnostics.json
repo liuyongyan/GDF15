@@ -1,0 +1,62 @@
+{
+  "diversity_check_pass": true,
+  "diversity_info": {
+    "all_classes": {
+      "coactivator": 2,
+      "cofactor_protein": 1,
+      "cytoskeletal": 1,
+      "enzyme": 21,
+      "gpcr": 23,
+      "ion_channel": 2,
+      "kinase": 6,
+      "lipid_droplet": 1,
+      "membrane_protein": 5,
+      "nuclear_receptor": 5,
+      "pseudokinase": 1,
+      "receptor": 10,
+      "receptor_guanylyl_cyclase": 2,
+      "receptor_kinase": 3,
+      "receptor_tyrosine_kinase": 4,
+      "regulator": 7,
+      "rna_binding": 1,
+      "secreted": 1,
+      "secreted_acute_phase": 2,
+      "secreted_apolipoprotein": 4,
+      "secreted_cofactor": 1,
+      "secreted_cytokine": 4,
+      "secreted_enzyme": 3,
+      "secreted_growth_factor": 13,
+      "secreted_hormone": 10,
+      "secreted_neuropeptide": 1,
+      "secreted_peptide": 16,
+      "secreted_precursor": 1,
+      "secreted_protease": 3,
+      "secreted_protein": 3,
+      "secreted_transfer_protein": 1,
+      "secreted_transport": 3,
+      "signaling_adapter": 3,
+      "structural_protein": 4,
+      "transcription_factor": 18,
+      "transfer_protein": 1,
+      "transport_protein": 1,
+      "transporter": 10,
+      "unknown": 3
+    },
+    "qualifying_above_5pct": {
+      "enzyme": 21,
+      "gpcr": 23,
+      "secreted_growth_factor": 13,
+      "secreted_peptide": 16,
+      "transcription_factor": 18
+    },
+    "total": 201
+  },
+  "output_sha256": "076b81a364826f9c072209a1a399d18e9f60828121ba2e738d2f858d7db8c1b4",
+  "rule_counts": {
+    "R1": 166,
+    "R2": 65,
+    "R3": 45,
+    "R4": 176
+  },
+  "universe_size": 201
+}

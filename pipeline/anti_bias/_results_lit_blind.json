@@ -1,0 +1,20 @@
+{
+  "blinded_top5_ensembl": [
+    "ENSG00000130513",
+    "ENSG00000084674",
+    "ENSG00000174697",
+    "ENSG00000254647",
+    "ENSG00000132855"
+  ],
+  "full_top5_ensembl": [
+    "ENSG00000174697",
+    "ENSG00000130513",
+    "ENSG00000132855",
+    "ENSG00000169174",
+    "ENSG00000105550"
+  ],
+  "literature_dim": "D4_literature_evidence",
+  "mechanism": "literature_blinded",
+  "note": "Proxy: zero the literature dim. Full literature NER redaction is a Phase \u03b2 refinement.",
+  "top5_overlap_count": 3
+}

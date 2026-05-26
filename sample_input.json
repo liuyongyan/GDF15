@@ -1,0 +1,12 @@
+{
+  "question": "Find a better weight-loss drug than Tirzepatide.",
+  "phenotype_profile_desired": {
+    "fat_mass_reduction": "high",
+    "lean_mass_preservation": "high",
+    "glycemic_control": "high",
+    "hepatic_steatosis_reduction": "high",
+    "durability_after_discontinuation_or_with_infrequent_dosing": "high",
+    "patient_administration_burden": "low"
+  },
+  "indication_context": "adults with co-existing obesity, type 2 diabetes (or prediabetes/insulin resistance), and MASH/NAFLD"
+}

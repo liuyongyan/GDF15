@@ -1,0 +1,14 @@
+# Pinned Python dependencies for the AI Discovery Pipeline.
+# Round 0 uses only Python standard library; this file pins the interpreter version
+# and reserves space for downstream packages (numpy, pandas, scipy) added in Phase β.
+
+# Standard library only for Round 0:
+# - csv, json, math, hashlib, random, pathlib, subprocess, argparse, sys, re
+
+# Reserved for Phase β (uncomment and pin when added):
+# numpy==2.1.0
+# pandas==2.2.2
+# scipy==1.14.0
+# scikit-learn==1.5.0
+# requests==2.32.3
+# pyarrow==17.0.0
