@@ -54,10 +54,11 @@ def load_score_tsv(path: Path) -> dict[str, dict]:
 
 
 def get_pre_registration_hash() -> str:
-    # Prefer the lock tag SHA; fall back to HEAD if no tag.
+    # Use the COMMIT SHA bearing the lock tag (^{} dereferences annotated tags).
+    # If no lock tag exists, fall back to HEAD marked _pre_lock.
     try:
         r = subprocess.run(
-            ["git", "rev-parse", "refs/tags/v1.0-methodology-locked"],
+            ["git", "rev-parse", "refs/tags/v1.0-methodology-locked^{}"],
             capture_output=True, text=True, check=False, cwd=PIPELINE_ROOT.parent,
         )
         if r.returncode == 0:
@@ -152,7 +153,10 @@ def main() -> int:
             elif key == "cross_biobank_replication":
                 anti_bias[key] = {"status": doc.get("status"), "reason": doc.get("reason")}
             elif key == "loo_ablation":
-                anti_bias[key] = {"aggregate_mean_rank_change": doc.get("aggregate_mean_rank_change")}
+                anti_bias[key] = {
+                    "aggregate_mean_rank_change": doc.get("aggregate_mean_rank_change"),
+                    "aggregate_mean_spearman_rho": doc.get("aggregate_mean_spearman_rho"),
+                }
             elif key == "negative_controls":
                 anti_bias[key] = {
                     "mean_percentile": doc.get("mean_percentile_of_controls"),
@@ -162,6 +166,14 @@ def main() -> int:
                 anti_bias[key] = {"top5_overlap_count": doc.get("top5_overlap_count")}
         else:
             anti_bias[key] = None
+
+    # Propagate anti-bias validation_summary (PASS/FAIL per mechanism)
+    val_summary_path = anti_bias_dir / "_validation_summary.json"
+    if val_summary_path.exists():
+        try:
+            anti_bias["validation_summary"] = json.loads(val_summary_path.read_text())
+        except json.JSONDecodeError:
+            pass
 
     reviewer_verdict = json.loads(Path(args.reviewer_verdict).read_text())
 

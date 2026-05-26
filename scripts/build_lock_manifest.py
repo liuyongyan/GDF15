@@ -75,6 +75,7 @@ def main() -> int:
     # methodology spec
     entries.append(build_artifact("draft.md", "Immutable spec the loop must satisfy", "forbidden"))
     entries.append(build_artifact("plan.md", "Implementation plan with locked AC", "forbidden"))
+    entries.append(build_artifact("pipeline/PRE_REGISTRATION.md", "Pre-registration manifest pinned by the lock tag", "forbidden"))
 
     # Scoring layer
     entries.append(build_artifact("pipeline/scoring/dimensions.json", "Scoring dimension definitions", "forbidden"))

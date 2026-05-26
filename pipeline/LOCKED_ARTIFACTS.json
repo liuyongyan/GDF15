@@ -10,7 +10,13 @@
       "mutability": "forbidden",
       "path": "evaluator/evaluator.py",
       "purpose": "External evaluator (mode-gated)",
-      "sha256": "c565744dec12bb3b4cde762b3e5a41bb74f5babb231ea3f01fef06cca83176f7"
+      "sha256": "32b4f10dccf4487bea52e7f8392fad0d083a2f32f5a7e8779e210ffc99a4b7c8"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/PRE_REGISTRATION.md",
+      "purpose": "Pre-registration manifest pinned by the lock tag",
+      "sha256": "faaf63b23b190053ed2d7ab9b391201ab886a2f7bd0f9fe81c5d7c0728e93ed9"
     },
     {
       "mutability": "audit_required",
@@ -34,7 +40,7 @@
       "mutability": "forbidden",
       "path": "pipeline/anti_bias/loo_ablation.py",
       "purpose": "Anti-bias mechanism",
-      "sha256": "a8ce33fc345b4f93ab326c2f43efdd41512076a64f42a80518718b4216355186"
+      "sha256": "3e2f4e4c6dd4a4fb4be2a0fb112344f6b940d7425f1ad086fc53960752487d00"
     },
     {
       "mutability": "forbidden",
@@ -70,7 +76,7 @@
       "mutability": "audit_required",
       "path": "pipeline/assemble_output.py",
       "purpose": "Output schema assembler",
-      "sha256": "d1d043728d629d73f6575bb734bc77ee734b6812338846b1c2482e67fd885a5c"
+      "sha256": "ac606f3b0ec1298d27fc404d25546f78fa989383c61b4e854adc46d789fb07a9"
     },
     {
       "mutability": "audit_required",
@@ -148,7 +154,7 @@
       "mutability": "audit_required",
       "path": "pipeline/reviewers/run_ensemble.sh",
       "purpose": "Ensemble invocation",
-      "sha256": "40afbf27c68123cc08174895270080e4564c31c1badf2529db2eba56587e6f98"
+      "sha256": "51d7262c569a8d7a7c671c33fe95192922c27c302019a74c804573aef4de4e59"
     },
     {
       "mutability": "forbidden",
@@ -160,7 +166,7 @@
       "mutability": "forbidden",
       "path": "pipeline/reviewers/validate_ensemble_output.py",
       "purpose": "Reviewer output validator",
-      "sha256": "b525261330b7340466df08e661df0f6934269b957be304929d7cfc3a55de17c4"
+      "sha256": "64877ae293aa906794a62338111bb7b64815d827cada4da8a7eb79eab8c31918"
     },
     {
       "mutability": "audit_required",

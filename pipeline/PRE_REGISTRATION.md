@@ -53,7 +53,7 @@ The post-lock Pipeline output's `pre_registration_hash` field is set to the git 
 A single command from a clean clone reproduces the locked Pipeline output:
 
 ```bash
-git clone <repo> && cd GDF15
+git clone <repo> && cd <project-root>
 git checkout v1.0-methodology-locked
 bash scripts/preflight.sh                # PASS required
 bash pipeline/run_pipeline.sh sample_input.json output.json 0

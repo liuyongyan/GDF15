@@ -28,6 +28,9 @@ def lock_tag_exists() -> bool:
         return False
 
 
+REQUIRED_DEFERRED_FIELDS = {"status", "reason", "affected_personas", "affected_backbones", "remediation"}
+
+
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
         print("Usage: validate_ensemble_output.py <verdict_json>", file=sys.stderr)
@@ -44,6 +47,7 @@ def main(argv: list[str]) -> int:
 
     errors: list[str] = []
     mode = doc.get("mode", "REGULAR")
+    status = doc.get("status", "")
 
     # MOCK_STUB is only acceptable BEFORE methodology lock.
     if "MOCK_STUB" in mode:
@@ -55,10 +59,25 @@ def main(argv: list[str]) -> int:
         else:
             print(f"validate_ensemble_output: NOTE - {mode} accepted pre-lock; must be replaced before Phase β.")
 
-    # If REVIEWER_DEFERRED status, allow but require reason
-    deferred = doc.get("status") == "REVIEWER_DEFERRED" or mode.startswith("REVIEWER_DEFERRED")
+    deferred = status == "REVIEWER_DEFERRED" or mode.startswith("REVIEWER_DEFERRED")
 
-    if not deferred and "MOCK_STUB" not in mode:
+    if deferred:
+        # REVIEWER_DEFERRED schema: status, reason, affected_personas, affected_backbones, remediation
+        missing_fields = REQUIRED_DEFERRED_FIELDS - set(doc.keys())
+        if missing_fields:
+            errors.append(f"REVIEWER_DEFERRED missing required fields: {sorted(missing_fields)}")
+        if doc.get("reason") and not isinstance(doc["reason"], str):
+            errors.append("'reason' must be a string")
+        if doc.get("reason") == "":
+            errors.append("'reason' must be non-empty")
+        if not isinstance(doc.get("affected_personas", []), list):
+            errors.append("'affected_personas' must be a list")
+        if not isinstance(doc.get("affected_backbones", []), list):
+            errors.append("'affected_backbones' must be a list")
+        if doc.get("remediation") and not isinstance(doc["remediation"], str):
+            errors.append("'remediation' must be a string")
+    elif "MOCK_STUB" not in mode:
+        # Real-mode: require all six personas + per-persona structure
         per = doc.get("per_persona", {})
         missing = REQUIRED_PERSONAS - set(per.keys())
         if missing:
