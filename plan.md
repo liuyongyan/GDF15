@@ -1,4 +1,4 @@
-# Plan: Two-Phase Autonomous Loop for Designing a Cell-Grade AI Discovery Pipeline that Rediscovers GDF15
+# Plan v1.1: Two-Phase Autonomous Loop for Designing a Cell-Grade AI Discovery Pipeline that Rediscovers GDF15
 
 ## Goal Description
 
@@ -39,9 +39,10 @@ Following TDD philosophy, each criterion includes positive and negative tests fo
     - Running the Pipeline against an input JSON missing required fields rejects with a validation error.
     - The Pipeline source tree (excluding `evaluator/`) contains no string match for `GDF15`, `GFRAL`, `MIC-1`, `NAG-1` (case-insensitive). Detected by `scripts/scan_target_leakage.sh`.
     - The Pipeline must not call `evaluator/expected_answer.json` from any code path outside `evaluator/`.
-  - AC-2.1: The Pipeline operates exclusively from cached public data sources for Round 0 and Phase α, with live API calls reserved for LLM agents and explicitly permitted real-time data lookups documented in `pipeline/data_sources/MANIFEST.md`.
-    - Positive: Phase α runs of the Pipeline succeed with the host's network disabled to all non-LLM endpoints (i.e., GWAS Catalog, Open Targets, PubMed snapshots are present locally).
-    - Negative: Removing any file referenced by `pipeline/data_sources/MANIFEST.md` produces a graceful "data missing" error from the Pipeline, not a network attempt.
+  - AC-2.1: The Pipeline prefers cached public data sources but MAY make live API calls in either Phase α or Phase β (per DEC-3 resolution). Every live call is logged for audit and cached for replay.
+    - Positive: Cached snapshots at `pipeline/data_sources/snapshots/` are checked first; cache miss triggers documented live fetch with response written back to cache.
+    - Positive: All non-LLM live HTTP calls are recorded in `runs/round_N/api_calls.log` (JSON-lines: timestamp, endpoint, request hash, status code, cached-path).
+    - Negative: Pipeline-side code that issues an undocumented network call (no entry in `api_calls.log`) is flagged by `scripts/scan_api_calls.sh` (best-effort static analysis grep for `requests.get`, `urllib`, `httpx`, `curl`, `wget` in Pipeline source).
 
 - AC-3: Candidate Universe is constructed by a deterministic, documented, target-agnostic algorithm before any scoring runs.
   - Positive Tests (expected to PASS):
@@ -64,15 +65,16 @@ Following TDD philosophy, each criterion includes positive and negative tests fo
     - Loading a `weights.json` whose sum deviates from 1.0 by more than 1e-6 is rejected by `pipeline/scoring/validate_weights.py`.
     - Any dimension whose name or formula introduces target-specific logic (matches `GDF15`/`GFRAL`/family-specific receptor checks) is flagged by `scripts/scan_target_leakage.sh`.
 
-- AC-5: Six-Persona Cell Reviewer Ensemble is integrated as an Inner Pipeline component with versioned, model-diverse prompts and graceful rate-limit degradation.
+- AC-5: Six-Persona Cell Reviewer Ensemble is integrated as an Inner Pipeline component with versioned, randomized-backbone prompts and graceful rate-limit degradation.
   - Positive Tests (expected to PASS):
     - `pipeline/reviewers/` contains six prompt files `R1_molecular_biologist.md` through `R6_editor.md`, each with a documented persona, evaluation rubric, and blocker-definition section. Also `pipeline/reviewers/FORBIDDEN_TARGET_NAMES.txt` lists target identifiers the reviewer must NEVER explicitly mention by name (GDF15, GFRAL, MIC-1, NAG-1); reviewers reference candidates by anonymized ID until the final user-facing report.
-    - The ensemble's invocation script `pipeline/reviewers/run_ensemble.sh` defaults to two distinct LLM backbones across the six personas (e.g., 3 personas via Codex, 3 via Gemini), configurable via `pipeline/reviewers/config.json`.
-    - On rate-limit error, the ensemble falls back to: (a) single-backbone mode with WARNING logged to `runs/round_N/log.txt`, then (b) cached reviewer outputs keyed by prompt-hash + input-hash if available, then (c) deferred-reviewer mode that flags the round as `REVIEWER_DEFERRED` and proceeds.
+    - The ensemble's invocation script `pipeline/reviewers/run_ensemble.sh` performs RANDOMIZED backbone assignment per round: for each round, each of the six personas is randomly assigned to one of {`codex` (gpt-5.5), `gemini` (3.1-pro)} with uniform probability, recorded in `runs/round_N/reviewer_backbone_assignment.json`. A deterministic seed derived from the round number is documented for replay.
+    - On rate-limit error from one backbone, the ensemble re-routes the affected persona to the other backbone with a WARNING logged; if BOTH backbones are rate-limited, falls back to (a) cached reviewer outputs keyed by prompt-hash + input-hash if available, then (b) deferred-reviewer mode that flags the round as `REVIEWER_DEFERRED` and writes `RATE_LIMITED.md` with the relevant `*_API_KEY` env var instructions.
     - The output JSON's `reviewer_ensemble_verdict` field contains all six per-persona structured critiques plus a meta-review summary with explicit `blockers_remaining` array, OR a documented `REVIEWER_DEFERRED` status with reason.
   - Negative Tests (expected to FAIL):
     - An ensemble run that silently omits a persona's verdict (without `REVIEWER_DEFERRED` status) is rejected by `pipeline/reviewers/validate_ensemble_output.py`.
     - Reviewer outputs that reference a forbidden target name in their text body are flagged by `pipeline/reviewers/scan_reviewer_outputs.py` (non-blocking warning during Phase α; blocker during Phase β where ranking output is also being audited).
+    - A round where the recorded backbone-assignment JSON shows all six personas on the same backbone (rather than randomized) is flagged unless explicitly justified by the rate-limit fallback log.
 
 - AC-6: Anti-Bias Validation Suite implements all five mechanisms from draft §6 with target-agnostic thresholds. GDF15-specific verification of these thresholds is performed exclusively by the External Evaluator (AC-7), not by Pipeline-side code.
   - Positive Tests (expected to PASS):
@@ -98,7 +100,7 @@ Following TDD philosophy, each criterion includes positive and negative tests fo
 - AC-8: Loop Orchestration implements round lifecycle, budget caps, rate-limit handling, rollback, and stuck detection per draft §4.7.
   - Positive Tests (expected to PASS):
     - `scripts/loop_orchestrator.sh` honors `MAX_ROUNDS=15` (default; configurable via env var), `MAX_WALLCLOCK_HOURS=8` (configurable), and writes one `proposals/round_N.md`, `runs/round_N/`, `diagnostics/round_N.md`, `reviews/round_N.md` per round.
-    - Hitting any rate-limit error from Codex/Gemini/Claude pauses the loop and writes `RATE_LIMITED.md` indicating which API and which env var (`OPENAI_API_KEY`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`) to set to unblock (per established project preference).
+    - Hitting any rate-limit error from Codex/Gemini/Claude triggers `RATE_LIMITED.md` containing: which API limited, which env var to set (`OPENAI_API_KEY` for Codex, `GEMINI_API_KEY` for Gemini, `ANTHROPIC_API_KEY` for Claude), exact instructions to obtain the key (console.anthropic.com, platform.openai.com, aistudio.google.com/apikey), and how to resume the loop after the env var is set. If the failure is on Codex or Gemini and the *other* LLM backbone is still healthy, the loop continues using the healthy backbone for reviewer-ensemble personas and logs the degradation; if the failure is on Claude (the loop driver itself), the loop halts and the user is expected to switch to API billing per the RATE_LIMITED.md instructions.
     - Three consecutive rounds without improvement on T1–T4 trigger a `STUCK.md` and graceful halt.
     - Rollback restores the pipeline tree to start-of-round state when Codex returns `decision: rollback`.
   - Negative Tests (expected to FAIL):
@@ -118,7 +120,8 @@ Following TDD philosophy, each criterion includes positive and negative tests fo
 - AC-10: Final Report includes honest reporting per draft Commitment 3, a Methodology Transparency disclosure section, and Cell paper Section 1 figure sketches.
   - Positive Tests (expected to PASS):
     - `FINAL_RESULT.md` exists at loop termination (success OR honest-failure status) and includes: termination status, final ranked top 25, whether GDF15 is in the top 5 and its rank as computed by `evaluator/evaluator.py`, anti-bias check pass/fail summary (target-agnostic Pipeline-side suite + target-aware Evaluator-side verification), reviewer ensemble verdict, post-hoc platform compatibility table for top 5, link to `pipeline/README.md`, and seven figure sketches for Section 1 (Fig 1 architecture overview; Fig 2 candidate universe; Fig 3 per-dim heatmap; Fig 4 composite ranking; Fig 5 anti-bias gauntlet; Fig 6 reviewer ensemble; Fig 7 post-hoc platform check).
-    - A `METHODOLOGY_TRANSPARENCY.md` artifact exists and explicitly states: (a) the Loop was developed with GDF15 as the hidden expected answer held by the External Evaluator; (b) Phase α was evaluator-free — the External Evaluator was NOT consulted during methodology design, eliminating the iterative-target-tuning channel; (c) Phase β post-lock changes were limited to engineering concerns and audited by Codex against `LOCKED_ARTIFACTS.json` SHA256 hashes; (d) the manuscript author must decide whether to surface this disclosure in the paper itself (a `PENDING_USER_DECISION` flag is set if not yet decided).
+    - A `METHODOLOGY_TRANSPARENCY.md` artifact exists as an INTERNAL-ONLY audit record (not for inclusion in the Cell manuscript per resolved DEC-1) and explicitly states: (a) the Loop was developed with GDF15 as the hidden expected answer held by the External Evaluator; (b) Phase α was evaluator-free — the External Evaluator was NOT consulted during methodology design, eliminating the iterative-target-tuning channel; (c) Phase β post-lock changes were limited to engineering concerns and audited by Codex against `LOCKED_ARTIFACTS.json` SHA256 hashes; (d) per the user's manuscript-disclosure decision (DEC-1 = DO NOT DISCLOSE), this artifact remains internal and is not surfaced in the Cell paper.
+    - The `evaluator/expected_answer.json` file is listed in `.gitignore` so it does NOT get pushed to a public GitHub remote (in addition to the project's existing no-auto-push rule).
   - Negative Tests (expected to FAIL):
     - If termination is reached only because budget exhausted (not because all T1–T6 pass), the Final Report's status field must read `BUDGET_EXHAUSTED_HONEST_FAILURE` and accurately describe which criteria failed without papering over them. A separate `STUCK.md` may also be written for legacy compatibility with §4.7 of the draft, but `FINAL_RESULT.md` is always written in this case.
     - The Final Report does not silently elevate GDF15 if the locked Pipeline's actual ranking placed it outside the top 5; ranking results in the Final Report must be byte-derived from `evaluator/evaluator.py --mode verbose` output, not human-edited.
@@ -345,41 +348,31 @@ Relative dependencies: Milestone 1 must complete before Milestones 2–4. Milest
 
 ## Pending User Decisions
 
+All six items resolved by user before launch.
+
 - DEC-1: Final paper disclosure of evaluator-based development.
-  - Claude Position: The `METHODOLOGY_TRANSPARENCY.md` artifact MUST be produced regardless of disclosure decision (it is an internal record). Whether to surface this disclosure in the Cell manuscript itself is a writing/ethics decision that should rest with the user; my recommendation is to disclose, framing it as "wet-lab-anchored evaluation of pipeline calibration" with the two-phase architecture as the methodological defense.
-  - Codex Position: Non-disclosure creates a major credibility risk if exposed during peer review. Recommend explicit disclosure with the two-phase architecture as the rationale.
-  - Tradeoff Summary: Disclosure costs narrative simplicity but earns audit-proof credibility. Non-disclosure risks retraction-level criticism if exposed.
-  - Decision Status: PENDING
+  - Decision: **DO NOT DISCLOSE** in the Cell manuscript. `METHODOLOGY_TRANSPARENCY.md` is produced as an internal-only audit artifact and is excluded from the manuscript narrative. `evaluator/expected_answer.json` is gitignored to prevent accidental public push.
+  - Decision Status: RESOLVED — User decision overrides both Claude's and Codex's preference to disclose; user accepts the credibility tradeoff.
 
-- DEC-2: Whether the overnight Loop budget should prioritize completing Phase α fully (locked, defensible methodology) over producing a complete Phase β ranking.
-  - Claude Position: Prioritize Phase α completion. A locked-but-not-yet-run methodology is a defensible artifact; a partial Phase β run on an unlocked methodology is not.
-  - Codex Position: Same.
-  - Tradeoff Summary: This is more a clarification than a disagreement; flagging for user confirmation that "wake up to a locked methodology + partial Phase β" is acceptable if budget is tight.
-  - Decision Status: PENDING
+- DEC-2: Budget priority between locked methodology vs partial Phase β.
+  - Decision: **Trust subscriptions; rely on API-key fallback on rate-limit.** Loop runs normally Phase α → lock → Phase β. On rate limit, write `RATE_LIMITED.md` with API-key setup instructions; user manually switches to API billing in the morning to resume if needed.
+  - Decision Status: RESOLVED — equivalent to choice (c) "trust subscriptions + API key safety net".
 
-- DEC-3: Whether to use only cached data for the overnight run, or allow some live API calls beyond LLM agents.
-  - Claude Position: Cached-only for Phase α (architectural commitment). Phase β may issue minimal live calls if explicitly justified (e.g., a single cross-biobank query) and documented.
-  - Codex Position: Strict cached-only is safer for overnight execution.
-  - Tradeoff Summary: Live calls increase rigor and freshness but introduce rate-limit, latency, and nondeterminism risk. Cached-only is reproducible but may miss recent evidence.
-  - Decision Status: PENDING
+- DEC-3: Cached-only data vs live API calls.
+  - Decision: **Allow live API calls in both Phase α and Phase β.** All non-LLM live calls are logged to `runs/round_N/api_calls.log` for audit. Cache-first preferred for cost and reproducibility; live fallback when cache misses.
+  - Decision Status: RESOLVED.
 
-- DEC-4: Acceptable list of LLM backbones for the six-persona reviewer ensemble.
-  - Claude Position: Use Codex (`gpt-5.5`) for R1, R3, R5; Gemini (`gemini-3.1-pro-preview`) for R2, R4, R6 — cross-model diversity for robustness; defaults match user's existing subscriptions (ChatGPT Pro, Google Ultra).
-  - Codex Position: Confirms cross-model diversity is needed; specific assignment of persona-to-model can be argued either way; the key is ≥2 backbones.
-  - Tradeoff Summary: More backbones increase robustness but cost; fewer backbones simplify but risk groupthink.
-  - Decision Status: PENDING
+- DEC-4: Reviewer ensemble backbone assignment.
+  - Decision: **Randomized per round.** Each round, each persona is randomly assigned to Codex or Gemini with uniform probability; assignment recorded to `runs/round_N/reviewer_backbone_assignment.json`. A deterministic seed derived from round number enables replay.
+  - Decision Status: RESOLVED.
 
-- DEC-5: Hard maximum on LLM cost per round.
-  - Claude Position: Soft cap of $20/round, logged. Hard cap of $100/round triggers `STUCK.md`.
-  - Codex Position: Recommend an explicit user-set hard cap to prevent budget runaway.
-  - Tradeoff Summary: Higher cap = more thorough rounds; lower cap = safer overnight runaway prevention.
-  - Decision Status: PENDING
+- DEC-5: Cost caps per round.
+  - Decision: **Soft cap $20/round (logged), hard cap $100/round (triggers STUCK.md).** Accepted.
+  - Decision Status: RESOLVED.
 
-- DEC-6: Whether the locked methodology may include an "AI-derived/LLM-scored mechanism-differentiation" dimension whose internals are inherently nondeterministic.
-  - Claude Position: Allow it, with deterministic seeding where possible, and document any LLM-output variance in the dimension's `dimensions.json` entry.
-  - Codex Position: Cautious; LLM-derived numeric scores can be brittle. If included, mandate cached transcripts and a fallback rule-based scorer.
-  - Tradeoff Summary: LLM-scored dimensions are richer but harder to defend at reviewer-level audits; rule-based scoring is more defensible but less expressive.
-  - Decision Status: PENDING
+- DEC-6: LLM-scored dimensions in the methodology.
+  - Decision: **Allowed**, with three safeguards: (1) deterministic seed where the LLM API supports it (or rule-based reseed of inputs); (2) cached LLM transcripts keyed by prompt-hash + input-hash; (3) a rule-based fallback scorer for the same dimension that runs when LLM is unavailable.
+  - Decision Status: RESOLVED.
 
 ## Implementation Notes
 
