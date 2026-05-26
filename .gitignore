@@ -1,6 +1,10 @@
 # Reference PDFs (kept locally, too large for git)
 references/*.pdf
 
+# Evaluator's expected answer — sensitive, never push to public remote
+evaluator/expected_answer.json
+evaluator/expected_thresholds.json
+
 # Claude / humanize cache
 .humanize/
 .cache/
