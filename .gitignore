@@ -1,0 +1,42 @@
+# Reference PDFs (kept locally, too large for git)
+references/*.pdf
+
+# Claude / humanize cache
+.humanize/
+.cache/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+.pytest_cache/
+venv/
+.venv/
+
+# R
+.Rhistory
+.RData
+.Rproj.user/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Secrets
+.env
+.env.local
+*.key
+*.pem
+
+# Logs
+*.log
+logs/
+
+# Large intermediate data (selectively re-add as needed)
+data/raw/
+data/intermediate/
