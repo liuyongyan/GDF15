@@ -19,8 +19,9 @@ RUN_DIR="$ROOT/runs/round_$ROUND_NUMBER"
 mkdir -p "$RUN_DIR"
 
 echo "[run_pipeline] === Step 1: Validate input ==="
-if [[ ! -f "$INPUT_JSON" ]]; then
-    echo "[run_pipeline] WARNING: input $INPUT_JSON not found; using default research question"
+if ! python3 "$DIR/validate_input.py" "$INPUT_JSON"; then
+    echo "[run_pipeline] ERROR: input validation failed; aborting" >&2
+    exit 1
 fi
 
 echo ""

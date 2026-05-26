@@ -1,0 +1,307 @@
+{
+  "artifacts": [
+    {
+      "mutability": "forbidden",
+      "path": "draft.md",
+      "purpose": "Immutable spec the loop must satisfy",
+      "sha256": "b0a6e487d0a6a8c727bd8ec853e3e0301b07600a8b8e2705168f17f338bbd8bd"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "evaluator/evaluator.py",
+      "purpose": "External evaluator (mode-gated)",
+      "sha256": "c565744dec12bb3b4cde762b3e5a41bb74f5babb231ea3f01fef06cca83176f7"
+    },
+    {
+      "mutability": "audit_required",
+      "path": "pipeline/anti_bias/anti_bias_lib.py",
+      "purpose": "Anti-bias shared utilities",
+      "sha256": "9f7a6028ebb97a946c4b2cf4569e33f0b9430f76f5ec79aa9b68066f223f668e"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/anti_bias/cross_biobank_mr.py",
+      "purpose": "Anti-bias mechanism",
+      "sha256": "bda0d5107c1ccb303354054109f0f72fbb44e1ee8f57b6ae7bc217e22972bd84"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/anti_bias/literature_blinded.py",
+      "purpose": "Anti-bias mechanism",
+      "sha256": "e77699c41e5e8bc66e3874426ad71a2bddfd34e6ef3204943a24023c5535aab7"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/anti_bias/loo_ablation.py",
+      "purpose": "Anti-bias mechanism",
+      "sha256": "a8ce33fc345b4f93ab326c2f43efdd41512076a64f42a80518718b4216355186"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/anti_bias/negative_controls.py",
+      "purpose": "Anti-bias mechanism",
+      "sha256": "baa6c6669e3b5d12171d8f21cf62b624fb77ea3c814346c3895feab2ab6c13b6"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/anti_bias/permutation_test.py",
+      "purpose": "Anti-bias mechanism",
+      "sha256": "ca1307690cec7ecd5b6d8234c42f1a41932ff926de390200a0d2a1295851b75c"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/anti_bias/run_suite.sh",
+      "purpose": "Anti-bias mechanism",
+      "sha256": "9d425ea4be698623c4032cabae503b3446262f123443cd1092f8d290efc86e76"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/anti_bias/thresholds.json",
+      "purpose": "Target-agnostic anti-bias thresholds",
+      "sha256": "4ea99aa098518213018cf12547d53e4872c43cb62be1c51526669469c53c3359"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/anti_bias/validate_suite_output.py",
+      "purpose": "Anti-bias mechanism",
+      "sha256": "427522c3bf17453d903c0870d767e627f8739ca6ffa368ddad74d3f4fe6d6109"
+    },
+    {
+      "mutability": "audit_required",
+      "path": "pipeline/assemble_output.py",
+      "purpose": "Output schema assembler",
+      "sha256": "d1d043728d629d73f6575bb734bc77ee734b6812338846b1c2482e67fd885a5c"
+    },
+    {
+      "mutability": "audit_required",
+      "path": "pipeline/data_sources/MANIFEST.md",
+      "purpose": "Data source provenance documentation",
+      "sha256": "d6db1bf4c492a772ddae06c7b0ca912354bef63785377ac2fa6e4b6149d10767"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/data_sources/SNAPSHOT_HASHES.txt",
+      "purpose": "SHA256 manifest of cached snapshots",
+      "sha256": "b5379655949378a3b868e4a49adb29fa95d2964f6cdcdb3795b7b04376c5aab4"
+    },
+    {
+      "mutability": "audit_required",
+      "path": "pipeline/post_hoc/platform_compatibility.py",
+      "purpose": "Post-hoc platform check (excluded from composite)",
+      "sha256": "14c1e03cfe71633a82a0e0e69529154eabbea79c4a7c0772ccb7443976558415"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/reviewers/FORBIDDEN_TARGET_NAMES.txt",
+      "purpose": "Target-name redaction list",
+      "sha256": "111e1afab39473473a75a92851d2b051874bd0b21b2ceb50b7088dd1fc197edc"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/reviewers/R1_molecular_biologist.md",
+      "purpose": "Reviewer persona prompt",
+      "sha256": "fa534db0fa484f8ce4877bb3576d3fa6e7db8294d0da52ae4f112be45d1a318b"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/reviewers/R2_clinical_translator.md",
+      "purpose": "Reviewer persona prompt",
+      "sha256": "e4f54e84b0951b706e08b36e59f4b4127ccb45aee9e9888a2a7689a21564c9e5"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/reviewers/R3_geneticist_biostatistician.md",
+      "purpose": "Reviewer persona prompt",
+      "sha256": "9ef56d844122a1d2b7d3f1276119d680691d3479a763ae5bab62c78edefcd590"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/reviewers/R4_pharmacologist.md",
+      "purpose": "Reviewer persona prompt",
+      "sha256": "eb3cd9c48ae175608ab2edcc9dbc65c6bd6f5e6605b70b2efa8888f3cab63aeb"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/reviewers/R5_ai_methods_reviewer.md",
+      "purpose": "Reviewer persona prompt",
+      "sha256": "0aecd1e177e6bf3a219ba35953b0842ad79283de49ee94aabe5ca7790ccb2010"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/reviewers/R6_editor.md",
+      "purpose": "Reviewer persona prompt",
+      "sha256": "811d5373270eb6d0f9481bf15d75a50e932fe198aba2797b37491f7d32b44e8d"
+    },
+    {
+      "mutability": "audit_required",
+      "path": "pipeline/reviewers/config.json",
+      "purpose": "Reviewer ensemble configuration",
+      "sha256": "25634690e17852829efbcfc1675e9d5b8b56d525b44d416157946343f400eee6"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/reviewers/meta_review.md",
+      "purpose": "Reviewer persona prompt",
+      "sha256": "ec8ccb57ae6443791b61ee70377ae233db21ac6ad58382e2a2a40c08ce9fa908"
+    },
+    {
+      "mutability": "audit_required",
+      "path": "pipeline/reviewers/run_ensemble.sh",
+      "purpose": "Ensemble invocation",
+      "sha256": "40afbf27c68123cc08174895270080e4564c31c1badf2529db2eba56587e6f98"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/reviewers/scan_reviewer_outputs.py",
+      "purpose": "Reviewer leakage scanner",
+      "sha256": "07dfa1eb6215cf6c1f4b5fd1a94a78146a5c957f956d3d7f5812eb4491ca4472"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/reviewers/validate_ensemble_output.py",
+      "purpose": "Reviewer output validator",
+      "sha256": "b525261330b7340466df08e661df0f6934269b957be304929d7cfc3a55de17c4"
+    },
+    {
+      "mutability": "audit_required",
+      "path": "pipeline/run_pipeline.sh",
+      "purpose": "End-to-end pipeline orchestrator",
+      "sha256": "13f41f693c5a6b99b90b8d224d752515712a41ce2ca54914724b58bda40fba10"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/scoring/dimensions.json",
+      "purpose": "Scoring dimension definitions",
+      "sha256": "e3128c879a24c2ecde815a9225898a942d89dfdad9724dcf51bef1711af40a18"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/scoring/score_clinical_signal.py",
+      "purpose": "Per-dimension scorer",
+      "sha256": "2eeabb956493be6f69ab068a328d91bada464df896a54c075a38b3dc1578d9ea"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/scoring/score_genetic_causal.py",
+      "purpose": "Per-dimension scorer",
+      "sha256": "2bbb342f9e6f644a24268d65b4fe7aad5882742c22093ff90061f309bd60d081"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/scoring/score_literature.py",
+      "purpose": "Per-dimension scorer",
+      "sha256": "ae6c1009b34dd22729a3188be09f2d4b406de4430725590a4718ee87138fea21"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/scoring/score_mechanism_diff.py",
+      "purpose": "Per-dimension scorer",
+      "sha256": "f7cf25614902cbd9bf431c4ac7698d93f951c0d268f6348e1c38a26c79c71bf7"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/scoring/score_platform_deliverability.py",
+      "purpose": "Per-dimension scorer",
+      "sha256": "c4110b2ca178aa49ceaea800b1f061f84f9c616dfa4f675561965e53948ebca5"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/scoring/score_safety_proxy.py",
+      "purpose": "Per-dimension scorer",
+      "sha256": "f2b33488214346f46a349e7a070b35e94591ede9e0ff237288aa19cfc7e16592"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/scoring/score_secretion_modulatability.py",
+      "purpose": "Per-dimension scorer",
+      "sha256": "8068dbd4a598d27637b4e573d162eb7181afa1b91a244ce4288686c250395bbd"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/scoring/score_target_association.py",
+      "purpose": "Per-dimension scorer",
+      "sha256": "3402f879ea3d5d7ce4c59e6caef49f29552dfae84f7ede76aa33bb51c903e599"
+    },
+    {
+      "mutability": "audit_required",
+      "path": "pipeline/scoring/scoring_lib.py",
+      "purpose": "Shared scoring utilities",
+      "sha256": "853b66110b071e5cee155bdafbf0a43b452a0938e25a07e5dbee77fb11ee34f3"
+    },
+    {
+      "mutability": "audit_required",
+      "path": "pipeline/scoring/validate_weights.py",
+      "purpose": "Weights schema validator",
+      "sha256": "0d608a0bfb346e30e71bb2ffde7db6c04153cdc265e540f0fb466a1b4fb9e1a5"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/scoring/weights.json",
+      "purpose": "Composite-ranking weights",
+      "sha256": "a6b91a96d11eeb34d7f3ebfdcbd8ad2cba79b7a00db82a3ceca9f9b82bcbd57d"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/universe/build_universe.py",
+      "purpose": "Deterministic universe builder",
+      "sha256": "b3d26c2010d5f7692d7d208f704afbaa6ddf830ce698fdc02fca488420f4e71b"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/validate_input.py",
+      "purpose": "Input contract validator",
+      "sha256": "7f944c82d0487a3be15459272077ba5a4e3ba0215a1df2ba14e73d6b99a74b3e"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "plan.md",
+      "purpose": "Implementation plan with locked AC",
+      "sha256": "e4584d245a5767b1c2ee5730c4a1b9c700e05a2a32253e8642d7d4f79413bc63"
+    },
+    {
+      "mutability": "audit_required",
+      "path": "scripts/build_snapshot_manifest.sh",
+      "purpose": "Snapshot SHA256 manifest builder",
+      "sha256": "df3c808823a51b2fe95baa831ad07cc7a23cbe09d80c8f6f6324200ae85dfca8"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "scripts/canonicalize_output.py",
+      "purpose": "Reproducibility canonicalizer",
+      "sha256": "14457fd7144c4b4a5325ba49ac180fded8b396bd0b1b67151997771f3d117c1c"
+    },
+    {
+      "mutability": "audit_required",
+      "path": "scripts/loop_orchestrator.sh",
+      "purpose": "Round-lifecycle orchestrator",
+      "sha256": "90dedc628d416f1abb102d3c56e9bacfdfe9de2b0f2ecaad4472769dacd7415c"
+    },
+    {
+      "mutability": "audit_required",
+      "path": "scripts/preflight.sh",
+      "purpose": "Loop-start environment check",
+      "sha256": "a6f51f47702b399f2e6dff2e467bc4e8b69f4250cfdc321505bce8d6baca4cb3"
+    },
+    {
+      "mutability": "audit_required",
+      "path": "scripts/scan_api_calls.sh",
+      "purpose": "Live API call audit (best-effort)",
+      "sha256": "c451fec6f412858ab8d535aa1f4cc78110eeb4c6e161103c0904cbb126320452"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "scripts/scan_target_leakage.sh",
+      "purpose": "Source-code target-name scanner",
+      "sha256": "edec6578fd50776b715df269184975103dc28c784b4836b727f7f9388165bfe9"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "scripts/verify_methodology_lock.sh",
+      "purpose": "Lock manifest verifier",
+      "sha256": "d706a3cc61a0cadd2efb8f555180f28046021bd1b45e231c2944ae3171ff5db4"
+    }
+  ],
+  "lock_tag": "v1.0-methodology-locked",
+  "note": "This manifest is the SHA256-pinned methodology contract at lock time. Artifacts marked 'forbidden' must NEVER change in Phase \u03b2. Artifacts marked 'audit_required' may change in Phase \u03b2 only with a documented engineering_audit_note.md endorsed by Codex (per AC-1.2). Verify with scripts/verify_methodology_lock.sh.",
+  "schema_version": "1.0"
+}

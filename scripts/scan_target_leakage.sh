@@ -45,9 +45,19 @@ EXCLUDE_ARGS=()
 for d in "${EXCLUDE_DIRS[@]}"; do
     EXCLUDE_ARGS+=(--exclude-dir="$d")
 done
-# Scan only SOURCE files (Python, shell, Markdown text). Skip derived data (.tsv, .json), the forbidden-list config, and binary artifacts.
-INCLUDE_ARGS=(--include="*.py" --include="*.sh" --include="*.md" --include="*.txt")
-EXCLUDE_FILES=(--exclude="FORBIDDEN_TARGET_NAMES.txt" --exclude="candidate_universe.tsv" --exclude="_scores_*.tsv" --exclude="*.json")
+# Scan SOURCE and CONFIG files. Exclude only derived data outputs (which by design contain
+# gene identifiers for every candidate in the universe) and the meta forbidden-names list.
+INCLUDE_ARGS=(--include="*.py" --include="*.sh" --include="*.md" --include="*.txt" --include="*.json")
+EXCLUDE_FILES=(
+    --exclude="FORBIDDEN_TARGET_NAMES.txt"
+    --exclude="candidate_universe.tsv"
+    --exclude="_scores_*.tsv"
+    --exclude="_results_*.json"
+    --exclude="output.json"
+    --exclude="*.canonical.json"
+    --exclude="universe_build_diagnostics.json"
+    --exclude="platform_compatibility_top25.tsv"
+)
 
 HITS_FOUND=0
 TOTAL_HITS=0

@@ -16,6 +16,18 @@ REQUIRED_PERSONAS = {
 }
 
 
+def lock_tag_exists() -> bool:
+    import subprocess
+    try:
+        r = subprocess.run(
+            ["git", "rev-parse", "refs/tags/v1.0-methodology-locked"],
+            capture_output=True, text=True, check=False,
+        )
+        return r.returncode == 0
+    except (FileNotFoundError, subprocess.SubprocessError):
+        return False
+
+
 def main(argv: list[str]) -> int:
     if len(argv) < 2:
         print("Usage: validate_ensemble_output.py <verdict_json>", file=sys.stderr)
@@ -33,10 +45,20 @@ def main(argv: list[str]) -> int:
     errors: list[str] = []
     mode = doc.get("mode", "REGULAR")
 
+    # MOCK_STUB is only acceptable BEFORE methodology lock.
+    if "MOCK_STUB" in mode:
+        if lock_tag_exists():
+            errors.append(
+                "MOCK_STUB reviewer verdict is not acceptable after methodology lock. "
+                "Real LLM invocations are required."
+            )
+        else:
+            print(f"validate_ensemble_output: NOTE - {mode} accepted pre-lock; must be replaced before Phase β.")
+
     # If REVIEWER_DEFERRED status, allow but require reason
     deferred = doc.get("status") == "REVIEWER_DEFERRED" or mode.startswith("REVIEWER_DEFERRED")
 
-    if not deferred:
+    if not deferred and "MOCK_STUB" not in mode:
         per = doc.get("per_persona", {})
         missing = REQUIRED_PERSONAS - set(per.keys())
         if missing:

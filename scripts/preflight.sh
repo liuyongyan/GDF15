@@ -66,7 +66,35 @@ echo "6. Git state:"
 if git diff --quiet && git diff --cached --quiet; then
     echo "  ✓ working tree clean"
 else
-    echo "  - working tree has uncommitted changes (non-fatal)"
+    echo "  ✗ working tree has uncommitted changes (loop start requires clean tree)" >&2
+    ERRORS=$((ERRORS + 1))
+fi
+echo ""
+
+echo "6a. Snapshot integrity (SHA256 manifest):"
+MANIFEST="pipeline/data_sources/SNAPSHOT_HASHES.txt"
+if [[ -f "$MANIFEST" ]]; then
+    snapshot_errors=0
+    while IFS=' ' read -r expected_hash rel_path; do
+        [[ -z "$expected_hash" || "$expected_hash" == \#* ]] && continue
+        if [[ ! -f "$rel_path" ]]; then
+            echo "  ✗ $rel_path (missing)" >&2
+            snapshot_errors=$((snapshot_errors + 1))
+            continue
+        fi
+        actual=$(shasum -a 256 "$rel_path" | awk '{print $1}')
+        if [[ "$actual" == "$expected_hash" ]]; then
+            echo "  ✓ $rel_path"
+        else
+            echo "  ✗ $rel_path (hash mismatch)" >&2
+            snapshot_errors=$((snapshot_errors + 1))
+        fi
+    done < "$MANIFEST"
+    if [[ $snapshot_errors -gt 0 ]]; then
+        ERRORS=$((ERRORS + snapshot_errors))
+    fi
+else
+    echo "  - SNAPSHOT_HASHES.txt absent; run scripts/build_snapshot_manifest.sh to generate"
 fi
 echo ""
 

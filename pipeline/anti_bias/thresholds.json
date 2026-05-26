@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "notes": "All thresholds are TARGET-AGNOSTIC. They reference top-N ranking properties or aggregate statistics, never a specific gene identifier. GDF15-specific verification lives in evaluator/expected_thresholds.json.",
+  "notes": "All thresholds are TARGET-AGNOSTIC. They reference top-N ranking properties or aggregate statistics, never a specific gene identifier. Target-specific verification lives in evaluator/expected_thresholds.json (read only by the External Evaluator after methodology lock).",
   "loo_ablation": {
     "criterion_description": "Average absolute rank-change in top 5 across all single-dim removals",
     "max_avg_rank_change_in_top5": 2.0,

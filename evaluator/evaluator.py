@@ -141,13 +141,57 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.mode == "blind":
-        # Plan v1.1 / DEC-1: Phase α is evaluator-free; blind mode is reserved for legacy
-        Path(args.output).write_text(
-            "# Evaluator Diagnostic (blind mode)\n\n"
-            "Phase α is evaluator-free in plan v1.1. Blind mode is not active in this build.\n"
-            "Convergence in Phase α is judged by Codex + reviewer ensemble + leakage scans only.\n"
-        )
-        print("evaluator: blind mode returns stub (Phase α is evaluator-free)")
+        # AC-1.1 contract: blind mode returns categorical JSON only.
+        # Note: per plan v1.1, Phase α is evaluator-free; the Loop should not invoke this.
+        # If invoked anyway (e.g., during integration testing), we return the AC-1.1 JSON
+        # contract — purely categorical pass/fail with NO target-specific information.
+        expected = json.loads((EVALUATOR_DIR / "expected_answer.json").read_text())
+        thresholds = json.loads((EVALUATOR_DIR / "expected_thresholds.json").read_text())
+
+        output_doc = None
+        if Path(args.input).exists():
+            try:
+                output_doc = json.loads(Path(args.input).read_text())
+            except json.JSONDecodeError:
+                output_doc = None
+
+        # Compute booleans WITHOUT exposing any rank/score detail
+        t1 = False
+        t2 = False
+        t3 = False
+        t4 = False
+        t5 = False
+        t6 = False
+        if output_doc and isinstance(output_doc.get("ranked_targets"), list):
+            expected_ensembl = set(expected.get("expected_ensembl_ids", []))
+            top_n = expected.get("expected_top_rank_threshold", 5)
+            for entry in output_doc["ranked_targets"][:top_n]:
+                if entry.get("ensembl_gene_id") in expected_ensembl:
+                    t1 = True
+                    break
+            anti_bias = output_doc.get("anti_bias_validation", {})
+            t2 = bool(anti_bias) and all(
+                v is not None for v in anti_bias.values()
+            )
+            t3 = anti_bias.get("permutation_test_p_value") is not None
+            rev = output_doc.get("reviewer_ensemble_verdict", {})
+            if isinstance(rev, dict):
+                t4 = (rev.get("status") != "BLOCKED") and (len(rev.get("blockers_remaining", [])) == 0)
+            t5 = bool(output_doc.get("pre_registration_hash"))
+            t6 = output_doc.get("pre_registration_hash", "").endswith("_pre_lock") is False
+
+        blind_result = {
+            "schema_version": "1.0",
+            "mode": "blind",
+            "T1_pass": t1,
+            "T2_pass": t2,
+            "T3_pass": t3,
+            "T4_pass": t4,
+            "T5_pass": t5,
+            "T6_pass": t6,
+        }
+        Path(args.output).write_text(json.dumps(blind_result, indent=2, sort_keys=True))
+        print("evaluator: blind mode wrote categorical JSON (AC-1.1 contract)")
         return 0
 
     # Verbose mode: enforce lock tag presence
