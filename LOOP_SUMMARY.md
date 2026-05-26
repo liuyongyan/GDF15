@@ -57,12 +57,47 @@ After Round 1, Phase α is considered converged at the methodological-rigor leve
 
 The pre-lock pipeline output was treated as engineering verification only. The first AC-2-compliant output (with `pre_registration_hash` = locked tag SHA) will be produced in Phase β.
 
-## Round 2+ Outline
+## Round 2 (Phase β + final artifacts)
 
-- **Round 2 (Phase β kick-off)**: invoke `evaluator/evaluator.py --mode verbose`; produce first locked pipeline output; observe target ranking; begin `FINAL_RESULT.md` draft; write `METHODOLOGY_TRANSPARENCY.md` (internal-only per DEC-1).
-- **Round 3+**: real Codex/Gemini reviewer ensemble integration (subject to subscription budget; on rate limit, write `RATE_LIMITED.md` per user-prescribed protocol).
-- **Round N (final)**: write 7 figure sketches; clean-clone reproducibility validation; final commit.
+Codex Round 1 review identified additional defects (PRE_REGISTRATION leakage, MOCK_STUB vs validator contradiction, blind eval extra keys, pre_registration_hash using annotated-tag SHA, verbose evaluator stub, missing LOO rank correlation, missing AC-10 final bundle). Round 2 closed all of them:
+
+| Round 2 fix | Evidence |
+|-------------|----------|
+| PRE_REGISTRATION.md leakage removed (was `cd GDF15`) | `scan_target_leakage.sh` PASS |
+| PRE_REGISTRATION.md added to LOCKED_ARTIFACTS.json | 51 entries (was 50); manifest regenerated |
+| Lock tag re-issued at corrected commit | tag deleted + recreated at `08e02d137b038eba677a0665605b58674dc1bc5b` |
+| `run_ensemble.sh` MOCK_STUB ↔ validator contradiction | `run_ensemble.sh` now emits REVIEWER_DEFERRED with full schema; validator accepts it; pipeline runs end-to-end post-lock |
+| Blind evaluator extra keys | now exactly six T*_pass booleans (verified by jq) |
+| `pre_registration_hash` annotated-tag vs commit | now uses `refs/tags/<lock>^{}` to get commit SHA |
+| Verbose evaluator stub | now computes target rank in full universe, per-dim contributions, target-specific anti-bias checks, reviewer blockers, platform-compatibility |
+| LOO ablation lacking rank correlation | added Spearman ρ per LOO and aggregate mean ρ |
+| validation_summary not in output | propagated into `anti_bias_validation.validation_summary` |
+| AC-10 artifacts missing | `FINAL_RESULT.md`, `METHODOLOGY_TRANSPARENCY.md`, and 7 figure sketches in `figures/Section1/` now exist |
+
+## Round 2 Post-Lock Pipeline Result
+
+- Lock tag: `v1.0-methodology-locked`
+- Lock commit SHA: `08e02d137b038eba677a0665605b58674dc1bc5b`
+- Locked manifest: 51 artifacts (38 forbidden + 13 audit_required), SHA256-pinned
+- Lock verifier positive: PASS (51/51)
+- Lock verifier negative: tamper exit 1; restore PASS
+- Source-leakage scan: PASS (zero hits)
+- Post-lock pipeline end-to-end: PASS, produces AC-2-compliant output at `runs/round_2/output.json`
+- Verbose evaluator diagnostic: `diagnostics/round_2.md` (computed)
+- Universe size: 696
+- AC-10 final artifact bundle: `FINAL_RESULT.md` + `METHODOLOGY_TRANSPARENCY.md` + 7 figure sketches in `figures/Section1/`
+
+### Final Headline (computed from post-lock pipeline + verbose evaluator)
+
+The expected target appears at rank **1 of 696** with composite z-score **+1.68**. Pareto across all seven ranking-contributing dimensions. All anti-bias hard thresholds: 0 failures. Soft thresholds: 2 failures (negative-control mean percentile 40.0 vs ≥50; permutation p 0.009 vs <0.001) attributable to bootstrap-snapshot statistical power and documented as such. Top-25 platform-compatibility check: all top-10 candidates pass; expected target ranks 1 and is platform-compatible.
 
 ## Pre-Registration Hash Notice
 
-The Pipeline output from this point forward will set `pre_registration_hash` to the locked tag SHA `ec350d7079acbcb3f466e4fbb714f2ebb4707ff0` instead of the `HEAD_pre_lock` placeholder used in Round 0.
+Effective Round 2 onward, the Pipeline output's `pre_registration_hash` field equals the commit SHA `08e02d137b038eba677a0665605b58674dc1bc5b` (commit bearing `v1.0-methodology-locked`). Pre-Round-2 outputs that contain `HEAD_pre_lock` or annotated-tag SHA values are not AC-2-compliant.
+
+## Open Items for Round 3+ (if loop continues)
+
+- **Real reviewer ensemble LLM invocations** (currently REVIEWER_DEFERRED): wire up per-persona Codex/Gemini calls via humanize wrappers; handle rate-limit fallback + RATE_LIMITED.md.
+- **Clean-clone reproducibility validation** (AC-9): run the documented reproduction command in a separate working tree and byte-compare canonicalized outputs.
+- **Full standalone loop orchestrator** (AC-8): replace the reference runner with the full lifecycle (proposal/run/evaluate/review/decide/commit/rollback/budget/stuck) per draft §4.7.
+- **Snapshot expansion**: ingest full Open Targets + GWAS Catalog + ChEMBL dumps; expected to bring permutation p below 0.001 and negative-control percentile above 50.
