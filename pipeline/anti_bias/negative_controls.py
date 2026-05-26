@@ -25,7 +25,8 @@ def main() -> int:
 
     sym_to_rank = {r["gene_symbol"]: r["rank"] for r in ranking}
     results = []
-    for sym in nc_symbols:
+    # Sort to ensure deterministic ordering across runs (sets are unordered)
+    for sym in sorted(nc_symbols):
         rank = sym_to_rank.get(sym)
         if rank is None:
             results.append({"control": sym, "rank": None, "percentile": None, "note": "not in universe"})

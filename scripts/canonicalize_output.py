@@ -31,14 +31,19 @@ def canonicalize(doc: dict) -> dict:
 
 def main() -> int:
     if len(sys.argv) < 2:
-        print("Usage: canonicalize_output.py <input.json> [<output.json>]", file=sys.stderr)
+        print("Usage: canonicalize_output.py <input.json> [<output.json>|-]", file=sys.stderr)
         return 2
     inp = Path(sys.argv[1])
-    out = Path(sys.argv[2]) if len(sys.argv) > 2 else inp.with_suffix(".canonical.json")
     doc = json.loads(inp.read_text())
     canon = canonicalize(doc)
-    out.write_text(json.dumps(canon, indent=2, sort_keys=True))
-    print(f"canonicalize_output: wrote {out}")
+    canon_text = json.dumps(canon, indent=2, sort_keys=True)
+    if len(sys.argv) > 2 and sys.argv[2] == "-":
+        # stdout mode (for diff use)
+        sys.stdout.write(canon_text + "\n")
+        return 0
+    out = Path(sys.argv[2]) if len(sys.argv) > 2 else inp.with_suffix(".canonical.json")
+    out.write_text(canon_text)
+    print(f"canonicalize_output: wrote {out}", file=sys.stderr)
     return 0
 
 

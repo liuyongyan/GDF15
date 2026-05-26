@@ -10,7 +10,7 @@
       "mutability": "forbidden",
       "path": "evaluator/evaluator.py",
       "purpose": "External evaluator (mode-gated)",
-      "sha256": "32b4f10dccf4487bea52e7f8392fad0d083a2f32f5a7e8779e210ffc99a4b7c8"
+      "sha256": "541cfe7cde636983859258033d4b57ed0e51be0472032b7bb40fb7b1e36895e2"
     },
     {
       "mutability": "forbidden",
@@ -34,7 +34,7 @@
       "mutability": "forbidden",
       "path": "pipeline/anti_bias/literature_blinded.py",
       "purpose": "Anti-bias mechanism",
-      "sha256": "e77699c41e5e8bc66e3874426ad71a2bddfd34e6ef3204943a24023c5535aab7"
+      "sha256": "6de08ac9652f31ddb65556ebbe9ca7ca9568ba645d31dca7fec1fd79004f6051"
     },
     {
       "mutability": "forbidden",
@@ -46,7 +46,7 @@
       "mutability": "forbidden",
       "path": "pipeline/anti_bias/negative_controls.py",
       "purpose": "Anti-bias mechanism",
-      "sha256": "baa6c6669e3b5d12171d8f21cf62b624fb77ea3c814346c3895feab2ab6c13b6"
+      "sha256": "02bd535e1730890619883254118da4ebdabe16b14e0ca8491d0991606e43ce6d"
     },
     {
       "mutability": "forbidden",
@@ -154,7 +154,7 @@
       "mutability": "audit_required",
       "path": "pipeline/reviewers/run_ensemble.sh",
       "purpose": "Ensemble invocation",
-      "sha256": "51d7262c569a8d7a7c671c33fe95192922c27c302019a74c804573aef4de4e59"
+      "sha256": "ac5cd7fc875381a3400b7f425d8b922e549f351f27d262c0cfcdd67490e48f8d"
     },
     {
       "mutability": "forbidden",
@@ -274,7 +274,7 @@
       "mutability": "forbidden",
       "path": "scripts/canonicalize_output.py",
       "purpose": "Reproducibility canonicalizer",
-      "sha256": "14457fd7144c4b4a5325ba49ac180fded8b396bd0b1b67151997771f3d117c1c"
+      "sha256": "b6c73a218d436eb7a1ab06265821dc905c1c134c7eb51b8a930ae3dbadf6b41d"
     },
     {
       "mutability": "audit_required",

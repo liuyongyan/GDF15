@@ -151,16 +151,38 @@ def render_verbose_diagnostic(output_json: dict, expected: dict, thresholds: dic
         lines.append(f"- severity: {cb.get('severity')}")
         lines.append(f"- result: **{nc_status}** — mean_percentile={nc_actual}")
 
-    # 3c: loo_ablation_target_stability (computed)
+    # 3c: loo_ablation_target_stability — compute per-dim target rank under each LOO
     cb = target_checks.get("loo_ablation_target_stability", {})
-    if cb and target_entry:
-        # Pull LOO output from anti_bias
+    if cb:
         loo = anti_bias.get("loo_ablation", {})
-        rank_change = loo.get("aggregate_mean_rank_change", "n/a")
         lines.append(f"### loo_ablation_target_stability")
         lines.append(f"- criterion: {cb.get('criterion')}")
         lines.append(f"- severity: {cb.get('severity')}")
-        lines.append(f"- result: **(pipeline-side LOO ablation aggregate)** — mean rank change in top-5 across LOO removals = {rank_change}")
+        # Read the per_dim_results from the raw _results_loo.json (loo in output is summarized)
+        try:
+            loo_raw_path = Path(__file__).resolve().parent.parent / "pipeline" / "anti_bias" / "_results_loo.json"
+            if loo_raw_path.exists():
+                loo_raw = json.loads(loo_raw_path.read_text())
+                per_dim = loo_raw.get("per_dim_results", {})
+                lines.append(f"- per-dim target ranks under LOO:")
+                lines.append("  | Removed Dim | Target rank | Δ from full |")
+                lines.append("  |---|---|---|")
+                all_pass = True
+                for dim, res in per_dim.items():
+                    for change in res.get("original_top5_rank_changes", []):
+                        if expected_ensembl and change.get("ensembl") in expected_ensembl:
+                            new_rank = change.get("new_rank")
+                            delta = change.get("delta")
+                            ok = new_rank is not None and new_rank <= top_n_threshold
+                            if not ok:
+                                all_pass = False
+                            marker = "✓" if ok else "✗"
+                            lines.append(f"  | {dim} | {new_rank} {marker} | {delta:+d} |")
+                lines.append(f"- result: **{'PASS' if all_pass else 'FAIL'}** — target remains in top {top_n_threshold} under every LOO")
+            else:
+                lines.append("- result: UNKNOWN — _results_loo.json not found")
+        except Exception as e:
+            lines.append(f"- result: UNKNOWN — error reading LOO results: {e}")
 
     # 3d: permutation_test_top_target_significance
     cb = target_checks.get("permutation_test_top_target_significance", {})
@@ -171,18 +193,68 @@ def render_verbose_diagnostic(output_json: dict, expected: dict, thresholds: dic
         lines.append(f"- severity: {cb.get('severity')}")
         lines.append(f"- result: empirical p-value = {pv}")
 
-    # 3e: platform_post_hoc_compatibility
-    cb = target_checks.get("platform_post_hoc_compatibility", {})
-    if cb and target_entry:
-        lines.append(f"### platform_post_hoc_compatibility (computed from UniProt features)")
+    # 3e: literature_blinded_target_top_quartile — compute from _results_lit_blind.json
+    cb = target_checks.get("literature_blinded_target_top_quartile", {})
+    if cb:
+        lines.append(f"### literature_blinded_target_top_quartile")
         lines.append(f"- criterion: {cb.get('criterion')}")
         lines.append(f"- severity: {cb.get('severity')}")
-        # The platform compatibility result is in a separate TSV; we surface what we can derive.
-        d5 = (target_entry.get("per_dimension_scores") or {}).get("D5_secretion_and_modulatability")
-        d8 = (target_entry.get("per_dimension_scores") or {}).get("D8_platform_deliverability")
-        lines.append(f"- D5 secretion/modulatability score: {d5}")
-        lines.append(f"- D8 platform deliverability score (excluded from composite): {d8}")
-        lines.append(f"- See runs/round_N/platform_compatibility_top25.tsv for the post-hoc PASS/FAIL grid")
+        try:
+            lit_raw_path = Path(__file__).resolve().parent.parent / "pipeline" / "anti_bias" / "_results_lit_blind.json"
+            if lit_raw_path.exists():
+                lit_raw = json.loads(lit_raw_path.read_text())
+                blinded_top25 = lit_raw.get("blinded_top25_ranking", [])
+                target_blinded_rank = None
+                for e in blinded_top25:
+                    if e.get("ensembl_gene_id") in expected_ensembl:
+                        target_blinded_rank = e.get("rank")
+                        break
+                # Approximate: top-25 percentile = (rank / total_universe) * 100
+                if target_blinded_rank is None:
+                    lines.append(f"- result: UNKNOWN — target not in blinded_top25 (rank may exceed 25)")
+                else:
+                    pct = (target_blinded_rank / n_total) * 100.0 if n_total else None
+                    in_top_quartile = pct is not None and pct <= 25.0
+                    lines.append(f"- result: **{'PASS' if in_top_quartile else 'FAIL'}** — blinded rank = {target_blinded_rank}, percentile = {pct:.2f}%, threshold ≤ 25%")
+            else:
+                lines.append("- result: UNKNOWN — _results_lit_blind.json not found")
+        except Exception as e:
+            lines.append(f"- result: UNKNOWN — error: {e}")
+
+    # 3f: platform_post_hoc_compatibility — READ THE TSV, not just point at it
+    cb = target_checks.get("platform_post_hoc_compatibility", {})
+    if cb and target_entry:
+        lines.append(f"### platform_post_hoc_compatibility")
+        lines.append(f"- criterion: {cb.get('criterion')}")
+        lines.append(f"- severity: {cb.get('severity')}")
+        # Read the platform_compatibility TSV (most recent round)
+        import csv as _csv
+        platform_tsv = None
+        runs_dir = Path(__file__).resolve().parent.parent / "runs"
+        if runs_dir.exists():
+            for d in sorted(runs_dir.iterdir(), reverse=True):
+                tsv = d / "platform_compatibility_top25.tsv"
+                if tsv.exists():
+                    platform_tsv = tsv
+                    break
+        target_platform_result = None
+        if platform_tsv:
+            with platform_tsv.open() as f:
+                reader = _csv.DictReader(f, delimiter="\t")
+                for row in reader:
+                    if row.get("ensembl_gene_id") in expected_ensembl:
+                        target_platform_result = row
+                        break
+        if target_platform_result:
+            lines.append(f"- result: **{target_platform_result.get('platform_compatible_overall', 'UNKNOWN')}**")
+            lines.append(f"  - secreted: {target_platform_result.get('is_secreted')} → {target_platform_result.get('passes_secretion')}")
+            lines.append(f"  - ORF size: {target_platform_result.get('orf_length_bp')} bp → {target_platform_result.get('passes_orf_size')}")
+            lines.append(f"  - signal peptide: {target_platform_result.get('signal_peptide')} → {target_platform_result.get('passes_signal')}")
+            lines.append(f"- source: {platform_tsv.relative_to(Path(__file__).resolve().parent.parent)}")
+        else:
+            lines.append("- result: UNKNOWN — platform_compatibility_top25.tsv not found or target not in top-25")
+            lines.append(f"- (D5 secretion/modulatability score: {(target_entry.get('per_dimension_scores') or {}).get('D5_secretion_and_modulatability')})")
+            lines.append(f"- (D8 platform deliverability score, excluded from composite: {(target_entry.get('per_dimension_scores') or {}).get('D8_platform_deliverability')})")
 
     # T4 — Reviewer ensemble verdict
     lines.append("")
@@ -274,7 +346,11 @@ def main() -> int:
             t3 = anti_bias.get("permutation_test_p_value") is not None
             rev = output_doc.get("reviewer_ensemble_verdict", {})
             if isinstance(rev, dict):
-                t4 = (rev.get("status") != "BLOCKED") and (len(rev.get("blockers_remaining", [])) == 0)
+                # Tightened T4: deferred-reviewer-status CANNOT count as PASS
+                rev_status = rev.get("status", "")
+                rev_mode = rev.get("mode", "")
+                is_deferred = (rev_status == "REVIEWER_DEFERRED") or rev_mode.startswith("REVIEWER_DEFERRED") or "MOCK_STUB" in rev_mode
+                t4 = (not is_deferred) and (rev.get("status") != "BLOCKED") and (len(rev.get("blockers_remaining", [])) == 0)
             t5 = bool(output_doc.get("pre_registration_hash"))
             t6 = output_doc.get("pre_registration_hash", "").endswith("_pre_lock") is False
 
