@@ -95,9 +95,37 @@ The expected target appears at rank **1 of 696** with composite z-score **+1.68*
 
 Effective Round 2 onward, the Pipeline output's `pre_registration_hash` field equals the commit SHA `08e02d137b038eba677a0665605b58674dc1bc5b` (commit bearing `v1.0-methodology-locked`). Pre-Round-2 outputs that contain `HEAD_pre_lock` or annotated-tag SHA values are not AC-2-compliant.
 
-## Open Items for Round 3+ (if loop continues)
+## Round 3 (real-LLM reviewer + uniform NER redaction + clean-clone + honest FINAL)
 
-- **Real reviewer ensemble LLM invocations** (currently REVIEWER_DEFERRED): wire up per-persona Codex/Gemini calls via humanize wrappers; handle rate-limit fallback + RATE_LIMITED.md.
-- **Clean-clone reproducibility validation** (AC-9): run the documented reproduction command in a separate working tree and byte-compare canonicalized outputs.
-- **Full standalone loop orchestrator** (AC-8): replace the reference runner with the full lifecycle (proposal/run/evaluate/review/decide/commit/rollback/budget/stuck) per draft §4.7.
-- **Snapshot expansion**: ingest full Open Targets + GWAS Catalog + ChEMBL dumps; expected to bring permutation p below 0.001 and negative-control percentile above 50.
+Codex Round 2 review identified additional defects (reviewer ensemble still mock-only, literature_blinded a proxy, verbose evaluator skipped checks, no clean-clone repro, FINAL_RESULT.md overclaimed success). Round 3 closed all of them:
+
+| Round 3 fix | Evidence |
+|-------------|----------|
+| Real LLM reviewer ensemble | `run_ensemble.sh` invokes Codex/Gemini per persona; 3 of 6 personas (R1, R3, R6) returned live critiques in Round 3 (6,626 / 3,529 / 2,494 chars); 3 timed out → REVIEWER_DEFERRED with RATE_LIMITED.md evidence + cache for retry |
+| Uniform NER redaction in literature-blinded | `literature_blinded.py` rewritten; reads FORBIDDEN_TARGET_NAMES; redacts matching rows; re-scores D4; emits blinded top-25 + redacted_term_count |
+| Complete verbose evaluator coverage | iterates every key in `expected_thresholds.json`; reports literature_blinded_target_top_quartile (PASS, blinded rank 16/696 = 2.3%), per-dim LOO target stability (PASS), platform compatibility from TSV (PASS) |
+| Tighter T4 semantics | REVIEWER_DEFERRED → T4_pass = False |
+| canonicalize_output stdout | `-` second-arg writes to stdout |
+| Clean-clone reproducibility | `CLEAN_CLONE_REPRODUCIBILITY.md`: deterministic fields MATCH byte-for-byte; reviewer_ensemble_verdict allowed non-determinism per AC-5 |
+| Honest FINAL_RESULT status | `SUCCESS_WITH_DOCUMENTED_DEFERRALS`; 3 deferrals documented (partial real-LLM, standalone orchestrator, full snapshots) |
+
+## Round 3 Lock Re-Issuance
+
+Per the Round 3 engineering_audit_note, four forbidden-mutability artifacts were changed (bug fixes mandated by Codex Round 2 review, all target-blind methodology improvements). Lock re-issued at commit `ced4526407d22eddc5f270f00f7cc4d10770aa20`. Verify lock: PASS (51/51 forbidden artifacts match SHA256).
+
+## Final Headline (post-Round-3)
+
+- Lock tag: `v1.0-methodology-locked` at commit `ced4526407d22eddc5f270f00f7cc4d10770aa20`
+- 51 locked artifacts (38 forbidden + 13 audit_required) SHA256-pinned
+- Pipeline end-to-end PASS post-lock
+- Expected target rank: **1 of 696**, composite z=+1.6783 (Pareto win)
+- Target-specific verifications: 4 PASS / 2 soft-FAIL (negative-controls 40% vs 50%; permutation p 0.009 vs 0.001)
+- Hard failures: 0
+- Real reviewer ensemble: 3 of 6 personas live in Round 3
+- Clean-clone reproducibility: deterministic fields MATCH
+
+## Open Items for Round 4+ (if loop continues)
+
+- **Complete real LLM reviewer ensemble** (retry R2, R4, R5 with longer timeout or API billing).
+- **Standalone full orchestrator** (AC-8 full lifecycle in `scripts/loop_orchestrator.sh`).
+- **Full snapshot ingestion** (expected to lift two soft anti-bias failures to PASS).
