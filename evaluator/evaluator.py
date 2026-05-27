@@ -158,14 +158,24 @@ def render_verbose_diagnostic(output_json: dict, expected: dict, thresholds: dic
         lines.append(f"### loo_ablation_target_stability")
         lines.append(f"- criterion: {cb.get('criterion')}")
         lines.append(f"- severity: {cb.get('severity')}")
-        # Read same-run LOO artifact: prefer output_json embedded path; fallback to scratch (legacy)
+        # AC-7 (Round 9): refuse fallback to scratch pipeline/anti_bias/_results_*.json.
+        # Same-run binding is mandatory; if the embedded path is absent or refers to
+        # the scratch directory, surface UNKNOWN and explain why.
         try:
             embedded_loo_path = output_json.get("anti_bias_artifact_paths", {}).get("loo")
-            if embedded_loo_path:
-                loo_raw_path = Path(embedded_loo_path)
+            scratch_prefix = str((Path(__file__).resolve().parent.parent / "pipeline" / "anti_bias").resolve())
+            if not embedded_loo_path:
+                lines.append("- result: UNKNOWN — output_json missing anti_bias_artifact_paths.loo (AC-7 binding)")
+                loo_raw_path = None
             else:
-                loo_raw_path = Path(__file__).resolve().parent.parent / "pipeline" / "anti_bias" / "_results_loo.json"
-            if loo_raw_path.exists():
+                resolved = (Path(embedded_loo_path) if Path(embedded_loo_path).is_absolute()
+                            else (Path(input_path).resolve().parent.parent / embedded_loo_path))
+                if str(resolved.resolve()).startswith(scratch_prefix):
+                    lines.append(f"- result: UNKNOWN — refused stale scratch path {resolved} (AC-7: must be run-local)")
+                    loo_raw_path = None
+                else:
+                    loo_raw_path = resolved
+            if loo_raw_path is not None and loo_raw_path.exists():
                 loo_raw = json.loads(loo_raw_path.read_text())
                 per_dim = loo_raw.get("per_dim_results", {})
                 lines.append(f"- per-dim target ranks under LOO:")
@@ -183,8 +193,8 @@ def render_verbose_diagnostic(output_json: dict, expected: dict, thresholds: dic
                             marker = "✓" if ok else "✗"
                             lines.append(f"  | {dim} | {new_rank} {marker} | {delta:+d} |")
                 lines.append(f"- result: **{'PASS' if all_pass else 'FAIL'}** — target remains in top {top_n_threshold} under every LOO")
-            else:
-                lines.append("- result: UNKNOWN — _results_loo.json not found")
+            elif loo_raw_path is not None:
+                lines.append(f"- result: UNKNOWN — referenced LOO artifact missing: {loo_raw_path}")
         except Exception as e:
             lines.append(f"- result: UNKNOWN — error reading LOO results: {e}")
 
@@ -215,11 +225,19 @@ def render_verbose_diagnostic(output_json: dict, expected: dict, thresholds: dic
         lines.append(f"- severity: {cb.get('severity')}")
         try:
             embedded_lit_path = output_json.get("anti_bias_artifact_paths", {}).get("lit_blind")
-            if embedded_lit_path:
-                lit_raw_path = Path(embedded_lit_path)
+            scratch_prefix = str((Path(__file__).resolve().parent.parent / "pipeline" / "anti_bias").resolve())
+            if not embedded_lit_path:
+                lines.append("- result: UNKNOWN — output_json missing anti_bias_artifact_paths.lit_blind (AC-7 binding)")
+                lit_raw_path = None
             else:
-                lit_raw_path = Path(__file__).resolve().parent.parent / "pipeline" / "anti_bias" / "_results_lit_blind.json"
-            if lit_raw_path.exists():
+                resolved = (Path(embedded_lit_path) if Path(embedded_lit_path).is_absolute()
+                            else (Path(input_path).resolve().parent.parent / embedded_lit_path))
+                if str(resolved.resolve()).startswith(scratch_prefix):
+                    lines.append(f"- result: UNKNOWN — refused stale scratch path {resolved} (AC-7: must be run-local)")
+                    lit_raw_path = None
+                else:
+                    lit_raw_path = resolved
+            if lit_raw_path is not None and lit_raw_path.exists():
                 lit_raw = json.loads(lit_raw_path.read_text())
                 blinded_top25 = lit_raw.get("blinded_top25_ranking", [])
                 target_blinded_rank = None
@@ -234,8 +252,8 @@ def render_verbose_diagnostic(output_json: dict, expected: dict, thresholds: dic
                     pct = (target_blinded_rank / n_total) * 100.0 if n_total else None
                     in_top_quartile = pct is not None and pct <= 25.0
                     lines.append(f"- result: **{'PASS' if in_top_quartile else 'FAIL'}** — blinded rank = {target_blinded_rank}, percentile = {pct:.2f}%, threshold ≤ 25%")
-            else:
-                lines.append("- result: UNKNOWN — _results_lit_blind.json not found")
+            elif lit_raw_path is not None:
+                lines.append(f"- result: UNKNOWN — referenced lit-blinded artifact missing: {lit_raw_path}")
         except Exception as e:
             lines.append(f"- result: UNKNOWN — error: {e}")
 

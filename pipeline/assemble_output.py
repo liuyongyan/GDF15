@@ -180,13 +180,28 @@ def main() -> int:
         except json.JSONDecodeError:
             pass
 
-    # Provide same-run artifact paths so the evaluator reads from these, not scratch defaults
+    # AC-7: same-run artifact binding. Prefer run-local copies under runs/round_N/anti_bias/
+    # (written by run_pipeline.sh Step 5b). Fall back to scratch only when the run-local copy
+    # is genuinely absent (e.g., when assemble_output is invoked directly without the pipeline).
+    output_path = Path(args.output).resolve()
+    run_dir = output_path.parent
+    run_local_anti_bias = run_dir / "anti_bias"
+    def _bind(name: str) -> str:
+        local = run_local_anti_bias / name
+        if local.exists():
+            # Store path relative to repo root for portability
+            try:
+                return str(local.relative_to(PIPELINE_ROOT.parent))
+            except ValueError:
+                return str(local)
+        scratch = anti_bias_dir / name
+        return str(scratch.resolve())
     anti_bias_artifact_paths = {
-        "loo": str((anti_bias_dir / "_results_loo.json").resolve()),
-        "lit_blind": str((anti_bias_dir / "_results_lit_blind.json").resolve()),
-        "nc": str((anti_bias_dir / "_results_nc.json").resolve()),
-        "mr": str((anti_bias_dir / "_results_mr.json").resolve()),
-        "perm": str((anti_bias_dir / "_results_perm.json").resolve()),
+        "loo": _bind("_results_loo.json"),
+        "lit_blind": _bind("_results_lit_blind.json"),
+        "nc": _bind("_results_nc.json"),
+        "mr": _bind("_results_mr.json"),
+        "perm": _bind("_results_perm.json"),
     }
 
     reviewer_verdict = json.loads(Path(args.reviewer_verdict).read_text())

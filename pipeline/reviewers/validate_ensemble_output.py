@@ -29,7 +29,21 @@ def lock_tag_exists() -> bool:
 
 
 REQUIRED_DEFERRED_FIELDS = {"status", "reason", "affected_personas", "affected_backbones", "remediation"}
-REQUIRED_PER_PERSONA_FIELDS_REAL = {"persona", "raw_text", "raw_text_sha1", "parsed_json_present", "blockers_count", "critiques"}
+REQUIRED_PER_PERSONA_FIELDS_REAL = {
+    "persona", "raw_text", "raw_text_sha1", "parsed_json_present",
+    "blockers_count", "critiques",
+    # AC-5 provenance fields (Round 9)
+    "status", "backbone_used", "prompt_hash", "input_hash",
+}
+
+
+def _real_blocker_list(per_persona: dict) -> list:
+    """Use the shared normalization routine — same logic the verdict-writer uses."""
+    import sys as _sys
+    from pathlib import Path as _Path
+    _sys.path.insert(0, str(_Path(__file__).resolve().parent))
+    from blocker_normalization import normalize_blockers
+    return normalize_blockers(per_persona)
 
 
 def main(argv: list[str]) -> int:
@@ -92,17 +106,26 @@ def main(argv: list[str]) -> int:
                 total_parsed_blockers += int(p_body.get("blockers_count", 0) or 0)
             except (TypeError, ValueError):
                 pass
-        if total_parsed_blockers > 0 and not doc.get("blockers_remaining"):
+        # Shared invariant: the propagated blockers_remaining must contain every
+        # real (case-insensitive severity=blocker, non-placeholder summary) critique.
+        real_blockers = _real_blocker_list(per)
+        if len(doc.get("blockers_remaining", []) or []) < len(real_blockers):
+            errors.append(
+                f"deferred-mode verdict drops blockers: normalization detects "
+                f"{len(real_blockers)} real blocker(s) but blockers_remaining has "
+                f"{len(doc.get('blockers_remaining', []) or [])}"
+            )
+        if total_parsed_blockers > 0 and not doc.get("blockers_remaining") and real_blockers:
             errors.append(
                 f"deferred-mode verdict has {total_parsed_blockers} parsed blocker(s) across personas "
                 f"but top-level blockers_remaining is empty"
             )
     elif "MOCK_STUB" not in mode:
-        # Real-mode: require all six personas + per-persona structure with parsed evidence
+        # Real (regular) mode: require all six personas + full provenance + honest blocker propagation
         per = doc.get("per_persona", {})
         missing = REQUIRED_PERSONAS - set(per.keys())
         if missing:
-            errors.append(f"missing personas: {missing}")
+            errors.append(f"missing personas in regular-mode verdict: {sorted(missing)}")
         for p, body in per.items():
             if not isinstance(body, dict):
                 errors.append(f"persona {p} body is not an object")
@@ -113,6 +136,36 @@ def main(argv: list[str]) -> int:
             field_gap = REQUIRED_PER_PERSONA_FIELDS_REAL - set(body.keys())
             if field_gap:
                 errors.append(f"persona {p} missing required fields: {sorted(field_gap)}")
+        # Same shared invariant: blockers_remaining must match real propagated count
+        real_blockers = _real_blocker_list(per)
+        propagated = len(doc.get("blockers_remaining", []) or [])
+        if propagated < len(real_blockers):
+            errors.append(
+                f"regular-mode verdict drops blockers: normalization detects "
+                f"{len(real_blockers)} real blocker(s) but blockers_remaining has {propagated}"
+            )
+        # Parsed-vs-propagated inconsistency surfaced as a soft warning (printed to stderr).
+        # This catches LLM self-contradictions (reports a count but provides no structured
+        # critique with severity=blocker and a real summary). The hard error remains
+        # "blockers_remaining drops real propagated blockers" enforced above.
+        warnings: list[str] = []
+        for p_name, body in per.items():
+            if not isinstance(body, dict):
+                continue
+            try:
+                bc = int(body.get("blockers_count", 0) or 0)
+            except (TypeError, ValueError):
+                continue
+            if bc <= 0:
+                continue
+            persona_real = [b for b in real_blockers if b["persona"] == p_name]
+            if not persona_real:
+                warnings.append(
+                    f"persona {p_name} reports blockers_count={bc} but no real blocker survived "
+                    f"normalization (placeholder summary or non-blocker severity); not propagated"
+                )
+        for w in warnings:
+            print(f"validate_ensemble_output: WARN - {w}", file=sys.stderr)
 
     if "meta_review" not in doc:
         errors.append("missing meta_review")

@@ -10,7 +10,7 @@
       "mutability": "forbidden",
       "path": "evaluator/evaluator.py",
       "purpose": "External evaluator (mode-gated)",
-      "sha256": "abe0dc44412eeb642cad0bb39490a548120408f6a7b802ac315d80bbf6020168"
+      "sha256": "dd439233442ab868c07fd6cb5b86609de9baaf5b7937b0e6e7bc8f1206b69221"
     },
     {
       "mutability": "forbidden",
@@ -76,7 +76,7 @@
       "mutability": "audit_required",
       "path": "pipeline/assemble_output.py",
       "purpose": "Output schema assembler",
-      "sha256": "e81308f80a57bbbc43fd4b9980041b17c3ec47a4d93e5b81bec906a68523340a"
+      "sha256": "dc06d3964fe789b760aec03488b3f77a4efc54a06198f1a4efc4a993c08a8ca6"
     },
     {
       "mutability": "audit_required",
@@ -154,7 +154,7 @@
       "mutability": "audit_required",
       "path": "pipeline/reviewers/run_ensemble.sh",
       "purpose": "Ensemble invocation",
-      "sha256": "ff79cf3eca5a854503af48ae803a23bc5543ae96f77350b0217f7a5615dfe285"
+      "sha256": "9276157e9de717cd77f265e1b0961fddae55ed182cd96596147bc18622129ed2"
     },
     {
       "mutability": "forbidden",
@@ -166,13 +166,13 @@
       "mutability": "forbidden",
       "path": "pipeline/reviewers/validate_ensemble_output.py",
       "purpose": "Reviewer output validator",
-      "sha256": "94767f2797185b0a093e8003bd97fa6fac9e9494fc2114d7350f1b8f9c6f34f1"
+      "sha256": "c5105ba5164209e52f87fc35e8e6bd27be871721222b6310a36ca9181923b507"
     },
     {
       "mutability": "audit_required",
       "path": "pipeline/run_pipeline.sh",
       "purpose": "End-to-end pipeline orchestrator",
-      "sha256": "2f6c92cc29293f0e0afabcb8c50f39d925ca71fd89a451395bcc0232fe1fff65"
+      "sha256": "1b660f54e04cfc17d86d3d7fb0dfe457e6c93a87d1b54811dad4afe8d31c0d43"
     },
     {
       "mutability": "forbidden",
@@ -311,9 +311,15 @@
       "path": "pipeline/reviewers/redact_forbidden.py",
       "purpose": "Reviewer prose forbidden-name redaction (AC-5)",
       "sha256": "bd020648b3fd95ba429c727af9c0abb5c2281359a03adcb8dd99c84bf011f17f"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/reviewers/blocker_normalization.py",
+      "purpose": "Shared blocker normalization for AC-5 (case-insensitive severity, placeholder filtering, dict/string critiques)",
+      "sha256": "7e845884de77068878a7c123612f61fea5f11eb8065c581ce4417bc61c127fc3"
     }
   ],
   "lock_tag": "v1.0-methodology-locked",
-  "note": "This manifest is the SHA256-pinned methodology contract at lock time. Artifacts marked 'forbidden' must NEVER change in Phase \u03b2. Artifacts marked 'audit_required' may change in Phase \u03b2 only with a documented engineering_audit_note.md endorsed by Codex (per AC-1.2). Verify with scripts/verify_methodology_lock.sh.\n\nRound 8 re-lock (2026-05-27): refreshed hashes after AC-5/AC-7/AC-8/AC-9 fixes; see pipeline/audits/round_8_engineering_audit_note.md",
+  "note": "This manifest is the SHA256-pinned methodology contract at lock time. Artifacts marked 'forbidden' must NEVER change in Phase \u03b2. Artifacts marked 'audit_required' may change in Phase \u03b2 only with a documented engineering_audit_note.md endorsed by Codex (per AC-1.2). Verify with scripts/verify_methodology_lock.sh.\n\nRound 8 re-lock (2026-05-27): refreshed hashes after AC-5/AC-7/AC-8/AC-9 fixes; see pipeline/audits/round_8_engineering_audit_note.md\n\nRound 9 re-lock (2026-05-27): refreshed hashes after AC-5/AC-7/AC-9 fixes; see pipeline/audits/round_9_engineering_audit_note.md",
   "schema_version": "1.0"
 }

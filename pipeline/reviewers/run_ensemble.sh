@@ -88,11 +88,16 @@ input_hash=$(shasum "$INPUT_SUMMARY" | awk '{print $1}')
 declare -a PERSONA_STATUS
 declare -a PERSONA_BACKBONE_USED
 declare -a PERSONA_TEXT_PATH
+declare -a PERSONA_PROMPT_HASH
 
 any_fail=0
 any_real_succ=0
 any_cache_hit=0
 real_call_attempted=0
+
+# Provenance TSV consumed by build_per_persona_json. Reset on each invocation.
+PROVENANCE_TSV="$PER_PERSONA_DIR/_provenance.tsv"
+: > "$PROVENANCE_TSV"
 
 for i in "${!PERSONAS[@]}"; do
     persona="${PERSONAS[$i]}"
@@ -117,6 +122,7 @@ $input_text"
     prompt_hash=$(printf "%s" "$combined" | shasum | awk '{print $1}')
     cache_key="${persona}_${prompt_hash}"
     cache_path="$CACHE_DIR/${cache_key}.txt"
+    PERSONA_PROMPT_HASH[$i]="$prompt_hash"
 
     out_path="$PER_PERSONA_DIR/${persona}.txt"
 
@@ -163,6 +169,15 @@ $input_text"
     echo "run_ensemble: $persona — both backbones failed (primary $primary, alternate $alt)" >&2
 done
 
+# Emit per-persona provenance TSV consumed by build_per_persona_json
+for i in "${!PERSONAS[@]}"; do
+    persona="${PERSONAS[$i]}"
+    status="${PERSONA_STATUS[$i]:-UNKNOWN}"
+    backbone="${PERSONA_BACKBONE_USED[$i]:-unknown}"
+    phash="${PERSONA_PROMPT_HASH[$i]:-}"
+    printf "%s\t%s\t%s\t%s\t%s\n" "$persona" "$status" "$backbone" "$phash" "$input_hash" >> "$PROVENANCE_TSV"
+done
+
 VERDICT_JSON="$OUTPUT_DIR/reviewer_ensemble_verdict.json"
 LOCK_TAG_EXISTS=0
 git rev-parse refs/tags/v1.0-methodology-locked >/dev/null 2>&1 && LOCK_TAG_EXISTS=1
@@ -201,8 +216,28 @@ def parse_first_json_block(text: str):
 
 per_dir = sys.argv[1]
 personas = sys.argv[2:]
+# Read provenance map written by the shell loop (one line per persona):
+#   PERSONA<TAB>STATUS<TAB>BACKBONE_USED<TAB>PROMPT_HASH<TAB>INPUT_HASH
+provenance = {}
+prov_path = os.path.join(per_dir, "_provenance.tsv")
+if os.path.exists(prov_path):
+    for line in open(prov_path):
+        parts = line.rstrip("\n").split("\t")
+        if len(parts) >= 5:
+            provenance[parts[0]] = {
+                "status": parts[1],
+                "backbone_used": parts[2],
+                "prompt_hash": parts[3],
+                "input_hash": parts[4],
+            }
 out = {}
 for p in personas:
+    prov = provenance.get(p, {
+        "status": "UNKNOWN",
+        "backbone_used": "unknown",
+        "prompt_hash": "",
+        "input_hash": "",
+    })
     txt_path = os.path.join(per_dir, f"{p}.txt")
     if os.path.exists(txt_path):
         with open(txt_path, "r") as f:
@@ -222,6 +257,10 @@ for p in personas:
         text_hash = hashlib.sha1(text.encode("utf-8")).hexdigest()
         out[p] = {
             "persona": p,
+            "status": prov["status"],
+            "backbone_used": prov["backbone_used"],
+            "prompt_hash": prov["prompt_hash"],
+            "input_hash": prov["input_hash"],
             "raw_text": text[:8000],
             "raw_text_sha1": text_hash,
             "parsed_json_present": parsed is not None,
@@ -230,7 +269,16 @@ for p in personas:
             "global_methodology_notes": global_notes,
         }
     else:
-        out[p] = {"persona": p, "missing": True, "blockers_count": 0, "critiques": []}
+        out[p] = {
+            "persona": p,
+            "status": prov["status"],
+            "backbone_used": prov["backbone_used"],
+            "prompt_hash": prov["prompt_hash"],
+            "input_hash": prov["input_hash"],
+            "missing": True,
+            "blockers_count": 0,
+            "critiques": [],
+        }
 print(json.dumps(out, indent=2, sort_keys=True))
 PYEOF
 }
@@ -286,32 +334,16 @@ $(for p in "${fail_personas[@]}"; do echo "- $p (BOTH_BACKBONES_FAILED)"; done)
 Cache directory: \`$CACHE_DIR\`
 EOF
     per_persona_json=$(build_per_persona_json)
-    python3 - "$VERDICT_JSON" "$ROUND_NUMBER" "$reason" "$fail_personas_json" "$per_persona_json" <<'PYEOF'
+    python3 - "$VERDICT_JSON" "$ROUND_NUMBER" "$reason" "$fail_personas_json" "$per_persona_json" "$REVIEWERS_DIR" <<'PYEOF'
 import json, sys
-verdict_path, round_num, reason, fail_personas_json, per_persona_json = sys.argv[1:6]
+sys.path.insert(0, sys.argv[5])
+from blocker_normalization import normalize_blockers
+verdict_path, round_num, reason, fail_personas_json, per_persona_json, _reviewers_dir = sys.argv[1:7]
 fail_personas = json.loads(f"[{fail_personas_json}]") if fail_personas_json.strip() else []
 per_persona = json.loads(per_persona_json)
-# Aggregate blockers even in deferred mode (Codex R6/R7 demand)
-total_blockers = 0
-blockers_remaining = []
-for p_name, p_body in per_persona.items():
-    if not isinstance(p_body, dict):
-        continue
-    bc = int(p_body.get("blockers_count", 0) or 0)
-    total_blockers += bc
-    for c in p_body.get("critiques", []) or []:
-        # Support dict and string critique entries; normalize severity case
-        if isinstance(c, dict):
-            sev = str(c.get("severity", "")).lower()
-            if sev == "blocker":
-                blockers_remaining.append({
-                    "persona": p_name,
-                    "summary": c.get("summary", ""),
-                    "severity": "blocker",
-                })
-        elif isinstance(c, str):
-            if "blocker" in c.lower():
-                blockers_remaining.append({"persona": p_name, "summary": c, "severity": "blocker"})
+# Single shared normalization path (AC-5)
+blockers_remaining = normalize_blockers(per_persona)
+total_blockers = sum(int((p or {}).get("blockers_count", 0) or 0) for p in per_persona.values() if isinstance(p, dict))
 doc = {
     "schema_version": "1.0",
     "round": int(round_num),
@@ -351,23 +383,21 @@ if [[ $any_real_succ -eq 0 && $any_cache_hit -eq 1 ]]; then
     status_msg="ALL_SIX_FROM_CACHE"
 fi
 
-python3 - "$VERDICT_JSON" "$ROUND_NUMBER" "$mode" "$status_msg" "$per_persona_json" <<'PYEOF'
+python3 - "$VERDICT_JSON" "$ROUND_NUMBER" "$mode" "$status_msg" "$per_persona_json" "$REVIEWERS_DIR" <<'PYEOF'
 import json, sys
-verdict_path, round_num, mode, status_msg, per_persona_json = sys.argv[1:6]
+sys.path.insert(0, sys.argv[6])
+from blocker_normalization import normalize_blockers
+verdict_path, round_num, mode, status_msg, per_persona_json, _reviewers_dir = sys.argv[1:7]
 per_persona = json.loads(per_persona_json)
-# Aggregate parsed blockers across personas
-total_blockers = 0
-blockers_remaining = []
-for p_name, p_body in per_persona.items():
-    if isinstance(p_body, dict):
-        bc = int(p_body.get("blockers_count", 0) or 0)
-        total_blockers += bc
-        # Pull severity=blocker from critiques
-        for c in p_body.get("critiques", []) or []:
-            if isinstance(c, dict) and c.get("severity") == "blocker":
-                blockers_remaining.append({"persona": p_name, "summary": c.get("summary", ""), "severity": "blocker"})
-verdict_label = "real_review_complete" if total_blockers == 0 else "blockers_present"
-overall_status_label = "PASS" if total_blockers == 0 else "BLOCKERS_PRESENT"
+# Single shared normalization path (AC-5) — same logic used in deferred mode
+blockers_remaining = normalize_blockers(per_persona)
+total_blockers_parsed = sum(int((p or {}).get("blockers_count", 0) or 0) for p in per_persona.values() if isinstance(p, dict))
+# Use the propagated-blocker count for verdict labeling (not the raw parsed count,
+# which may include "None"/empty placeholder blockers that normalization drops).
+n_real_blockers = len(blockers_remaining)
+verdict_label = "real_review_complete" if n_real_blockers == 0 else "blockers_present"
+overall_status_label = "PASS" if n_real_blockers == 0 else "BLOCKERS_PRESENT"
+total_blockers = n_real_blockers
 doc = {
     "schema_version": "1.0",
     "round": int(round_num),

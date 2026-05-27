@@ -43,21 +43,20 @@ echo "[run_pipeline] === Step 5: Run anti-bias suite ==="
 bash "$DIR/anti_bias/run_suite.sh"
 
 echo ""
-echo "[run_pipeline] === Step 6: Run reviewer ensemble ==="
+echo "[run_pipeline] === Step 5b: Copy anti-bias artifacts run-local (AC-7) ==="
+RUN_ANTI_BIAS_DIR="$RUN_DIR/anti_bias"
+mkdir -p "$RUN_ANTI_BIAS_DIR"
+for f in _results_loo.json _results_lit_blind.json _results_nc.json _results_mr.json _results_perm.json _validation_summary.json; do
+    if [[ -f "$DIR/anti_bias/$f" ]]; then
+        cp "$DIR/anti_bias/$f" "$RUN_ANTI_BIAS_DIR/$f"
+    fi
+done
+
+echo ""
+echo "[run_pipeline] === Step 6: Run reviewer ensemble (dossier from CURRENT run) ==="
 SUMMARY_TXT="$RUN_DIR/pipeline_summary.txt"
-# Build an anonymized dossier for reviewers from the most-recent prior assembled output.
-# Prefer most-recent-by-mtime prior output as source; reviewers critique whatever Pipeline produced last
-PRIOR_OUTPUT=""
-if [[ -d "$ROOT/runs" ]]; then
-    PRIOR_OUTPUT=$(find "$ROOT/runs" -maxdepth 2 -name output.json -type f 2>/dev/null | xargs -I{} stat -f "%m %N" {} 2>/dev/null | sort -n | tail -1 | awk '{print $2}')
-fi
-if [[ -n "$PRIOR_OUTPUT" ]]; then
-    python3 "$DIR/reviewers/build_reviewer_dossier.py" --round "$ROUND_NUMBER" --out "$SUMMARY_TXT" --source-output "$PRIOR_OUTPUT" 2>/dev/null || \
-        echo "Pipeline summary input for reviewer ensemble (round $ROUND_NUMBER) — fallback minimal" > "$SUMMARY_TXT"
-else
-    python3 "$DIR/reviewers/build_reviewer_dossier.py" --round "$ROUND_NUMBER" --out "$SUMMARY_TXT" 2>/dev/null || \
-        echo "Pipeline summary input for reviewer ensemble (round $ROUND_NUMBER) — no prior assembled output yet" > "$SUMMARY_TXT"
-fi
+# Dossier built strictly from same-run scoring + anti-bias artifacts (NOT prior output.json).
+python3 "$DIR/reviewers/build_reviewer_dossier.py" --round "$ROUND_NUMBER" --out "$SUMMARY_TXT"
 bash "$DIR/reviewers/run_ensemble.sh" "$ROUND_NUMBER" "$SUMMARY_TXT" "$RUN_DIR"
 python3 "$DIR/reviewers/validate_ensemble_output.py" "$RUN_DIR/reviewer_ensemble_verdict.json"
 # Use phase=beta post-lock; phase=alpha pre-lock (per AC-5)
