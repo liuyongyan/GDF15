@@ -262,7 +262,7 @@
       "mutability": "forbidden",
       "path": "plan.md",
       "purpose": "Implementation plan with locked AC",
-      "sha256": "e4584d245a5767b1c2ee5730c4a1b9c700e05a2a32253e8642d7d4f79413bc63"
+      "sha256": "9244a11a9456720116976b7062b8a89e61acbdbab08bf07c6bbf335b84c607a4"
     },
     {
       "mutability": "audit_required",
@@ -320,6 +320,6 @@
     }
   ],
   "lock_tag": "v1.0-methodology-locked",
-  "note": "This manifest is the SHA256-pinned methodology contract at lock time. Artifacts marked 'forbidden' must NEVER change in Phase \u03b2. Artifacts marked 'audit_required' may change in Phase \u03b2 only with a documented engineering_audit_note.md endorsed by Codex (per AC-1.2). Verify with scripts/verify_methodology_lock.sh.\n\nRound 8 re-lock (2026-05-27): refreshed hashes after AC-5/AC-7/AC-8/AC-9 fixes; see pipeline/audits/round_8_engineering_audit_note.md\n\nRound 9 re-lock (2026-05-27): refreshed hashes after AC-5/AC-7/AC-9 fixes; see pipeline/audits/round_9_engineering_audit_note.md\n\nRound 10 re-lock (2026-05-27): schema-robust normalizer, identity-check validator, evaluator path-resolution fix; see pipeline/audits/round_10_engineering_audit_note.md\n\nRound 11 re-lock (2026-05-27): validator hardened to fail post-lock on count-vs-critique contradictions; deferred-mode heredoc import bug fixed; see pipeline/audits/round_11_engineering_audit_note.md",
+  "note": "This manifest is the SHA256-pinned methodology contract at lock time. Artifacts marked 'forbidden' must NEVER change in Phase \u03b2. Artifacts marked 'audit_required' may change in Phase \u03b2 only with a documented engineering_audit_note.md endorsed by Codex (per AC-1.2). Verify with scripts/verify_methodology_lock.sh.\n\nRound 8 re-lock (2026-05-27): refreshed hashes after AC-5/AC-7/AC-8/AC-9 fixes; see pipeline/audits/round_8_engineering_audit_note.md\n\nRound 9 re-lock (2026-05-27): refreshed hashes after AC-5/AC-7/AC-9 fixes; see pipeline/audits/round_9_engineering_audit_note.md\n\nRound 10 re-lock (2026-05-27): schema-robust normalizer, identity-check validator, evaluator path-resolution fix; see pipeline/audits/round_10_engineering_audit_note.md\n\nRound 11 re-lock (2026-05-27): validator hardened to fail post-lock on count-vs-critique contradictions; deferred-mode heredoc import bug fixed; see pipeline/audits/round_11_engineering_audit_note.md\n\nRound 12 (plan evolution, 2026-05-27): added AC-11 (round walkthrough) and AC-12 (R publication-grade figures) to plan.md; deleted 7 legacy ASCII figure sketches; see pipeline/audits/round_12_plan_evolution_audit_note.md",
   "schema_version": "1.0"
 }

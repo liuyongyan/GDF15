@@ -126,6 +126,29 @@ Following TDD philosophy, each criterion includes positive and negative tests fo
     - If termination is reached only because budget exhausted (not because all T1–T6 pass), the Final Report's status field must read `BUDGET_EXHAUSTED_HONEST_FAILURE` and accurately describe which criteria failed without papering over them. A separate `STUCK.md` may also be written for legacy compatibility with §4.7 of the draft, but `FINAL_RESULT.md` is always written in this case.
     - The Final Report does not silently elevate GDF15 if the locked Pipeline's actual ranking placed it outside the top 5; ranking results in the Final Report must be byte-derived from `evaluator/evaluator.py --mode verbose` output, not human-edited.
 
+- AC-11: Each round of `pipeline/run_pipeline.sh` automatically emits a self-contained, human-readable walkthrough at `runs/round_N/round_N_walkthrough.md` describing exactly what the pipeline did, why, and what it produced — derived verbatim from that round's on-disk artifacts.
+  - Positive Tests (expected to PASS):
+    - After `bash pipeline/run_pipeline.sh sample_input.json runs/round_N/output.json N` completes successfully, `runs/round_N/round_N_walkthrough.md` exists and is non-empty.
+    - The walkthrough contains one section per pipeline step (Steps 1–10 as defined in `pipeline/run_pipeline.sh`), and each section MUST include three labeled subsections in this order: (1) **What it did** — the concrete operation performed plus key input/output file paths; (2) **Why** — the methodological motivation, with a short rationale referencing the relevant AC or plan section; (3) **Results** — the concrete numbers, PASS/FAIL labels, and produced artifact paths derived from that round's artifacts.
+    - The walkthrough embeds actual quantitative values from the round (not narrative summaries): top-N candidate composite scores, per-dimension z-scores for the top candidate, anti-bias mechanism actual values vs thresholds with explicit PASS/FAIL labels, permutation empirical p-value, reviewer ensemble status, count of propagated blockers.
+    - The walkthrough embeds reviewer-prose excerpts for at least each persona that raised a propagated blocker (truncated to 200 chars), plus that persona's adjudication status from `meta_review.adjudications`. Personas with no propagated blocker are summarized as a one-line "no blocker" entry.
+    - The walkthrough is target-blind in the same sense the reviewer dossier is: it MAY reference the ranked candidate by gene symbol when reading `runs/round_N/output.json` (which is post-evaluator and includes the symbol) — explicit Cell-paper figure sketches and reviewer prose remain anonymized via `pipeline/reviewers/scan_reviewer_outputs.py`.
+    - `bash scripts/scan_target_leakage.sh pipeline` continues to PASS after the walkthrough generator is added (the generator script must contain zero forbidden gene-symbol literals; it reads candidate symbols only from runtime artifacts).
+  - Negative Tests (expected to FAIL):
+    - A pipeline run that completes Steps 1–10 but skips walkthrough generation must be detected: the absence of `runs/round_N/round_N_walkthrough.md` after a successful pipeline exit must cause `pipeline/run_pipeline.sh` to exit non-zero.
+    - The walkthrough generator must refuse to fabricate data: when an expected artifact (e.g., `runs/round_N/reviewer_ensemble_verdict.json`) is missing, the corresponding walkthrough section must say "ARTIFACT_MISSING: \<path\>" rather than silently producing plausible-sounding prose.
+
+- AC-12: Cell paper Section 1 figures are publication-grade plots produced by an R script, not ASCII/Markdown sketches.
+  - Positive Tests (expected to PASS):
+    - `figures/Section1/generate_figures.R` exists and, when invoked as `Rscript figures/Section1/generate_figures.R`, produces all seven figures (Fig 1 architecture overview; Fig 2 candidate universe; Fig 3 per-dim heatmap; Fig 4 composite ranking; Fig 5 anti-bias gauntlet; Fig 6 reviewer ensemble; Fig 7 post-hoc platform check) as both PNG (≥300 dpi) and PDF in `figures/Section1/output/`.
+    - The R script reads its data from `runs/round_N/output.json`, `runs/round_N/reviewer_ensemble_verdict.json`, `runs/round_N/anti_bias/_results_*.json`, and `runs/round_N/platform_compatibility_top25.tsv` — not from hand-coded values. The round number N is selected by a `--round` CLI argument (default: latest round under `runs/`).
+    - Both PNG and PDF outputs are committed to git under `figures/Section1/output/` so anyone cloning the repo immediately sees the manuscript figures without needing to run R locally.
+    - `figures/Section1/README.md` exists and lists required R packages and the exact command to regenerate.
+    - The old ASCII/Markdown figure sketches at `figures/Section1/Fig*.md` are removed (AC-12 supersedes the AC-10 sketch requirement; the `FINAL_RESULT.md` figure-reference section is updated to point at PNG/PDF instead).
+  - Negative Tests (expected to FAIL):
+    - If `generate_figures.R` cannot find required R packages, it must exit non-zero with a clear "missing-package" error rather than producing partial output.
+    - If a referenced run directory (e.g., `runs/round_N/`) is missing required artifacts, the script must skip the affected figure and emit a clear stderr warning rather than producing a misleading plot.
+
 ## Path Boundaries
 
 ### Upper Bound (Maximum Acceptable Scope)
@@ -308,6 +331,9 @@ Relative dependencies: Milestone 1 must complete before Milestones 2–4. Milest
 | task26 | Write `METHODOLOGY_TRANSPARENCY.md` describing Phase α/β separation, evaluator-free Phase α, hash-based lock, and disclosure-decision flag | AC-10 | coding | task25 |
 | task27 | Generate seven figure sketches (Fig 1–Fig 7 per draft §10) as Markdown/Mermaid + quantitative data tables | AC-10 | coding | task25 |
 | task28 | Final integrity audit: run `scan_target_leakage.sh` + `verify_methodology_lock.sh` + AC validation suite; document any unmet AC in `FINAL_RESULT.md` | AC-1..AC-10 | analyze | task25,task26,task27 |
+| task29 | Implement `pipeline/generate_round_walkthrough.py` (reads all artifacts in `runs/round_N/` plus `diagnostics/round_N.md` and per-round audit note; emits self-contained `runs/round_N/round_N_walkthrough.md` with one section per pipeline step containing What/Why/Results subsections, embedded numbers, and reviewer-prose excerpts per AC-11); wire into `pipeline/run_pipeline.sh` as Step 11; pipeline exits non-zero if walkthrough is missing after Steps 1-10 succeed | AC-11 | coding | task12 |
+| task30 | Implement `figures/Section1/generate_figures.R` producing Fig 1-Fig 7 as both PNG (≥300 dpi) and PDF in `figures/Section1/output/` from `runs/round_N/` artifacts (--round CLI arg, default latest); write `figures/Section1/README.md` listing R-package dependencies (ggplot2, scales, cowplot, DiagrammeR or equivalent) and run command; delete the legacy ASCII/Markdown sketches at `figures/Section1/Fig*.md`; update FINAL_RESULT.md figure references from `.md` to `.pdf`/`.png` | AC-12 | coding | task25 |
+| task31 | R12+ re-lock and tag move after AC-11/AC-12 land: refresh LOCKED_ARTIFACTS for changed artifacts (run_pipeline.sh + new generate_round_walkthrough.py); write per-round engineering audit note; force-move v1.0-methodology-locked to the close-out commit; regenerate runs/round_N and verify pre_registration_hash equals current tag SHA | AC-1, AC-10, AC-11, AC-12 | coding | task29,task30 |
 
 ## Claude-Codex Deliberation
 
