@@ -168,8 +168,10 @@ def render_verbose_diagnostic(output_json: dict, expected: dict, thresholds: dic
                 lines.append("- result: UNKNOWN — output_json missing anti_bias_artifact_paths.loo (AC-7 binding)")
                 loo_raw_path = None
             else:
+                # Repo root is two levels up from this evaluator file (evaluator/ -> repo)
+                _repo_root = Path(__file__).resolve().parent.parent
                 resolved = (Path(embedded_loo_path) if Path(embedded_loo_path).is_absolute()
-                            else (Path(input_path).resolve().parent.parent / embedded_loo_path))
+                            else (_repo_root / embedded_loo_path))
                 if str(resolved.resolve()).startswith(scratch_prefix):
                     lines.append(f"- result: UNKNOWN — refused stale scratch path {resolved} (AC-7: must be run-local)")
                     loo_raw_path = None
@@ -230,8 +232,9 @@ def render_verbose_diagnostic(output_json: dict, expected: dict, thresholds: dic
                 lines.append("- result: UNKNOWN — output_json missing anti_bias_artifact_paths.lit_blind (AC-7 binding)")
                 lit_raw_path = None
             else:
+                _repo_root = Path(__file__).resolve().parent.parent
                 resolved = (Path(embedded_lit_path) if Path(embedded_lit_path).is_absolute()
-                            else (Path(input_path).resolve().parent.parent / embedded_lit_path))
+                            else (_repo_root / embedded_lit_path))
                 if str(resolved.resolve()).startswith(scratch_prefix):
                     lines.append(f"- result: UNKNOWN — refused stale scratch path {resolved} (AC-7: must be run-local)")
                     lit_raw_path = None
