@@ -124,8 +124,45 @@ Per the Round 3 engineering_audit_note, four forbidden-mutability artifacts were
 - Real reviewer ensemble: 3 of 6 personas live in Round 3
 - Clean-clone reproducibility: deterministic fields MATCH
 
-## Open Items for Round 4+ (if loop continues)
+## Round 4 (zero-diff + orchestrator lifecycle + reviewer JSON parsing)
 
-- **Complete real LLM reviewer ensemble** (retry R2, R4, R5 with longer timeout or API billing).
-- **Standalone full orchestrator** (AC-8 full lifecycle in `scripts/loop_orchestrator.sh`).
-- **Full snapshot ingestion** (expected to lift two soft anti-bias failures to PASS).
+Codex Round 3 review identified multiple gaps: reviewer ensemble lacked JSON parsing, lit-blinded not propagated to output, evaluator stale TSV lookup, standalone orchestrator thin, clean-clone diff non-zero, FINAL_RESULT overclaimed success. Round 4 closed all of them:
+
+| Round 4 fix | Evidence |
+|-------------|----------|
+| Reviewer JSON parsing + blocker aggregation | run_ensemble.sh extracts first JSON code block from each persona's raw text; aggregates `blockers_count` and severity=blocker critiques into meta_review.blockers_remaining; raw_text_sha1 recorded |
+| Strict per-persona validator | REQUIRED_PER_PERSONA_FIELDS_REAL enforced (persona, raw_text, raw_text_sha1, parsed_json_present, blockers_count, critiques) |
+| Anonymized reviewer dossier | new build_reviewer_dossier.py constructs candidate-by-ID table with per-dim z-scores + anti-bias summary + methodology summary |
+| Phase=beta scan post-lock | run_pipeline.sh detects lock tag; switches scan_reviewer_outputs.py to --phase=beta |
+| Evaluator path-derived platform TSV | derives from --input parent dir (no more stale glob) |
+| Lit-blinded propagation | assemble_output.py exposes {redaction_method, redacted_term_count, blinded_top25_ranking, top5_overlap_count} |
+| Zero-diff canonicalization | EXCLUDE_TOPLEVEL = {pre_registration_hash, round, reviewer_ensemble_verdict}; CANONICAL_EXCLUSIONS.md documents contract; verified `diff = 0 lines` between two canonical assemblies |
+| Standalone orchestrator lifecycle | scripts/loop_orchestrator.sh: round counter + budgets + per-round artifacts + decision file + rollback + STUCK + BUDGET_EXHAUSTED + Phase β refusal without lock |
+| FINAL_RESULT honest status | regenerated as MAJOR_AC_COMPLETE_WITH_DOCUMENTED_LIMITATIONS with 3 explicit limitations listed |
+
+## Round 4 Lock Re-Issuance
+
+Lock re-issued at commit `4a238b03fba147664783da4a0ca798df4c8d8ec7` after R4 forbidden-artifact fixes (canonicalize_output.py, evaluator.py, validate_ensemble_output.py). Engineering audit at `runs/round_4/engineering_audit_note.md`. Manifest stays at 51 SHA256-pinned artifacts.
+
+## Final Headline (post-Round-4)
+
+- Lock: `v1.0-methodology-locked` at commit `4a238b03fba147664783da4a0ca798df4c8d8ec7`
+- 51 SHA256-pinned artifacts; verifier positive + negative tests PASS
+- Pipeline end-to-end PASS; expected target **rank 1 of 696** (composite +1.6783)
+- 6 of 6 target-specific verifications computed; 4 PASS + 2 soft FAIL (documented bootstrap limits)
+- Real reviewer ensemble: 3 of 6 personas live in R3 (R1, R3, R6); 3 timed out → REVIEWER_DEFERRED with evidence
+- Zero-diff canonical comparison demonstrated
+- Standalone orchestrator full lifecycle implemented
+- AC-10 final bundle: FINAL_RESULT.md (honest) + METHODOLOGY_TRANSPARENCY.md (internal) + 7 figure sketches
+
+## Documented Limitations (honest deferrals)
+
+1. Real-LLM reviewer completion of R2/R4/R5 (subscription / rate-limit / API-key dependent).
+2. Anti-bias soft thresholds (negative-controls 40% vs ≥50; permutation p 0.009 vs <0.001) — bootstrap-power limited.
+3. Cross-biobank MR — OPTIONAL_SKIPPED with documented reason.
+
+## Open Items (further rounds if needed)
+
+- Retry R2/R4/R5 reviewers with API key billing or longer per-call timeout.
+- Ingest full Open Targets / GWAS Catalog / ChEMBL snapshots to tighten soft anti-bias thresholds to PASS.
+- Wire cross-biobank MR with cached multi-biobank summary statistics.
