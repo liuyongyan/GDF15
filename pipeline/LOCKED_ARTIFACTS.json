@@ -160,7 +160,7 @@
       "mutability": "forbidden",
       "path": "pipeline/reviewers/scan_reviewer_outputs.py",
       "purpose": "Reviewer leakage scanner",
-      "sha256": "07dfa1eb6215cf6c1f4b5fd1a94a78146a5c957f956d3d7f5812eb4491ca4472"
+      "sha256": "7b28af22b0bf8a202ed27e92a0f953e7d2164d1d6a898524e54a2c0c94b891b1"
     },
     {
       "mutability": "forbidden",
