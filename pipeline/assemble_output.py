@@ -163,7 +163,12 @@ def main() -> int:
                     "details": doc.get("controls"),
                 }
             elif key == "literature_blinded_rerank":
-                anti_bias[key] = {"top5_overlap_count": doc.get("top5_overlap_count")}
+                anti_bias[key] = {
+                    "redaction_method": doc.get("redaction_method"),
+                    "redacted_term_count": doc.get("redacted_term_count"),
+                    "blinded_top25_ranking": doc.get("blinded_top25_ranking"),
+                    "top5_overlap_count": doc.get("top5_overlap_count"),
+                }
         else:
             anti_bias[key] = None
 

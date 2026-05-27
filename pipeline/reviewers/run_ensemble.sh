@@ -167,10 +167,38 @@ VERDICT_JSON="$OUTPUT_DIR/reviewer_ensemble_verdict.json"
 LOCK_TAG_EXISTS=0
 git rev-parse refs/tags/v1.0-methodology-locked >/dev/null 2>&1 && LOCK_TAG_EXISTS=1
 
-# Construct per_persona JSON wrapping each persona's raw output text
+# Construct per_persona JSON wrapping each persona's raw output text + parsed JSON
 build_per_persona_json() {
     python3 - "$PER_PERSONA_DIR" "${PERSONAS[@]}" <<'PYEOF'
-import json, sys, os
+import json, sys, os, re, hashlib
+
+def parse_first_json_block(text: str):
+    """Try to extract the first valid JSON object from text (possibly inside ```json fences)."""
+    # Try fenced JSON first
+    fenced = re.findall(r"```(?:json)?\s*(\{[\s\S]*?\})\s*```", text)
+    for cand in fenced:
+        try:
+            return json.loads(cand)
+        except (json.JSONDecodeError, ValueError):
+            continue
+    # Try to find a bare JSON object by scanning for balanced braces
+    start = text.find("{")
+    while start != -1:
+        depth = 0
+        for i in range(start, len(text)):
+            if text[i] == "{": depth += 1
+            elif text[i] == "}":
+                depth -= 1
+                if depth == 0:
+                    cand = text[start:i+1]
+                    try:
+                        return json.loads(cand)
+                    except (json.JSONDecodeError, ValueError):
+                        break
+        start = text.find("{", start + 1)
+    return None
+
+
 per_dir = sys.argv[1]
 personas = sys.argv[2:]
 out = {}
@@ -179,12 +207,27 @@ for p in personas:
     if os.path.exists(txt_path):
         with open(txt_path, "r") as f:
             text = f.read()
+        parsed = parse_first_json_block(text)
+        blockers_count = 0
+        critiques = []
+        global_notes = []
+        if parsed and isinstance(parsed, dict):
+            blockers_count = int(parsed.get("blockers_count", 0) or 0)
+            crit = parsed.get("critiques", [])
+            if isinstance(crit, list):
+                critiques = crit
+            notes = parsed.get("global_methodology_notes", [])
+            if isinstance(notes, list):
+                global_notes = notes
+        text_hash = hashlib.sha1(text.encode("utf-8")).hexdigest()
         out[p] = {
             "persona": p,
-            "raw_text": text[:8000],  # bounded
-            "blockers_count": 0,
-            "critiques": [],
-            "global_methodology_notes": [],
+            "raw_text": text[:8000],
+            "raw_text_sha1": text_hash,
+            "parsed_json_present": parsed is not None,
+            "blockers_count": blockers_count,
+            "critiques": critiques,
+            "global_methodology_notes": global_notes,
         }
     else:
         out[p] = {"persona": p, "missing": True, "blockers_count": 0, "critiques": []}
@@ -284,20 +327,32 @@ fi
 python3 - "$VERDICT_JSON" "$ROUND_NUMBER" "$mode" "$status_msg" "$per_persona_json" <<'PYEOF'
 import json, sys
 verdict_path, round_num, mode, status_msg, per_persona_json = sys.argv[1:6]
+per_persona = json.loads(per_persona_json)
+# Aggregate parsed blockers across personas
+total_blockers = 0
+blockers_remaining = []
+for p_name, p_body in per_persona.items():
+    if isinstance(p_body, dict):
+        bc = int(p_body.get("blockers_count", 0) or 0)
+        total_blockers += bc
+        # Pull severity=blocker from critiques
+        for c in p_body.get("critiques", []) or []:
+            if isinstance(c, dict) and c.get("severity") == "blocker":
+                blockers_remaining.append({"persona": p_name, "summary": c.get("summary", ""), "severity": "blocker"})
 doc = {
     "schema_version": "1.0",
     "round": int(round_num),
     "status": status_msg,
     "mode": mode,
-    "per_persona": json.loads(per_persona_json),
+    "per_persona": per_persona,
     "meta_review": {
-        "verdict": "real_review_complete",
+        "verdict": "real_review_complete" if total_blockers == 0 else "blockers_present",
         "consensus_blockers": [],
-        "single_reviewer_blockers": [],
+        "single_reviewer_blockers": blockers_remaining,
         "pipeline_methodology_concerns": [],
-        "cross_reviewer_agreement_summary": f"All 6 personas reviewed ({status_msg})",
+        "cross_reviewer_agreement_summary": f"All 6 personas reviewed ({status_msg}); total parsed blockers across personas = {total_blockers}",
     },
-    "blockers_remaining": [],
+    "blockers_remaining": blockers_remaining,
 }
 with open(verdict_path, "w") as f:
     json.dump(doc, f, indent=2, sort_keys=True)

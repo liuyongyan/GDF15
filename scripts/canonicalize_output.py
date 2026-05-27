@@ -12,21 +12,14 @@ from pathlib import Path
 
 
 # Fields to exclude (their presence/value can vary across runs without affecting correctness)
-EXCLUDE_TOPLEVEL = {"pre_registration_hash"}
-EXCLUDE_FROM_REVIEWER = {"round", "mode"}
+# Per AC-5, reviewer ensemble output is allowed to be non-deterministic (real LLM responses
+# vary across calls). For byte-comparable AC-9 reproducibility, the entire reviewer block is
+# excluded along with the runtime-only top-level fields below. See CANONICAL_EXCLUSIONS.md.
+EXCLUDE_TOPLEVEL = {"pre_registration_hash", "round", "reviewer_ensemble_verdict"}
 
 
 def canonicalize(doc: dict) -> dict:
-    out = {}
-    for k, v in doc.items():
-        if k in EXCLUDE_TOPLEVEL:
-            continue
-        if k == "reviewer_ensemble_verdict" and isinstance(v, dict):
-            inner = {kk: vv for kk, vv in v.items() if kk not in EXCLUDE_FROM_REVIEWER}
-            out[k] = inner
-        else:
-            out[k] = v
-    return out
+    return {k: v for k, v in doc.items() if k not in EXCLUDE_TOPLEVEL}
 
 
 def main() -> int:

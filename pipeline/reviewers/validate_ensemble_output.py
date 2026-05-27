@@ -29,6 +29,7 @@ def lock_tag_exists() -> bool:
 
 
 REQUIRED_DEFERRED_FIELDS = {"status", "reason", "affected_personas", "affected_backbones", "remediation"}
+REQUIRED_PER_PERSONA_FIELDS_REAL = {"persona", "raw_text", "raw_text_sha1", "parsed_json_present", "blockers_count", "critiques"}
 
 
 def main(argv: list[str]) -> int:
@@ -77,7 +78,7 @@ def main(argv: list[str]) -> int:
         if doc.get("remediation") and not isinstance(doc["remediation"], str):
             errors.append("'remediation' must be a string")
     elif "MOCK_STUB" not in mode:
-        # Real-mode: require all six personas + per-persona structure
+        # Real-mode: require all six personas + per-persona structure with parsed evidence
         per = doc.get("per_persona", {})
         missing = REQUIRED_PERSONAS - set(per.keys())
         if missing:
@@ -85,6 +86,13 @@ def main(argv: list[str]) -> int:
         for p, body in per.items():
             if not isinstance(body, dict):
                 errors.append(f"persona {p} body is not an object")
+                continue
+            if body.get("missing"):
+                errors.append(f"persona {p} marked missing in real-mode verdict")
+                continue
+            field_gap = REQUIRED_PER_PERSONA_FIELDS_REAL - set(body.keys())
+            if field_gap:
+                errors.append(f"persona {p} missing required fields: {sorted(field_gap)}")
 
     if "meta_review" not in doc:
         errors.append("missing meta_review")

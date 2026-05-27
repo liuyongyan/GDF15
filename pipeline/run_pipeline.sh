@@ -45,10 +45,15 @@ bash "$DIR/anti_bias/run_suite.sh"
 echo ""
 echo "[run_pipeline] === Step 6: Run reviewer ensemble ==="
 SUMMARY_TXT="$RUN_DIR/pipeline_summary.txt"
-echo "Pipeline summary input for reviewer ensemble (round $ROUND_NUMBER)" > "$SUMMARY_TXT"
+# Build an anonymized dossier for reviewers from the most-recent prior assembled output.
+python3 "$DIR/reviewers/build_reviewer_dossier.py" --round "$ROUND_NUMBER" --out "$SUMMARY_TXT" 2>/dev/null || \
+    echo "Pipeline summary input for reviewer ensemble (round $ROUND_NUMBER) — no prior assembled output yet" > "$SUMMARY_TXT"
 bash "$DIR/reviewers/run_ensemble.sh" "$ROUND_NUMBER" "$SUMMARY_TXT" "$RUN_DIR"
 python3 "$DIR/reviewers/validate_ensemble_output.py" "$RUN_DIR/reviewer_ensemble_verdict.json"
-python3 "$DIR/reviewers/scan_reviewer_outputs.py" "$RUN_DIR/reviewer_ensemble_verdict.json" --phase=alpha
+# Use phase=beta post-lock; phase=alpha pre-lock (per AC-5)
+SCAN_PHASE="alpha"
+if git rev-parse refs/tags/v1.0-methodology-locked >/dev/null 2>&1; then SCAN_PHASE="beta"; fi
+python3 "$DIR/reviewers/scan_reviewer_outputs.py" "$RUN_DIR/reviewer_ensemble_verdict.json" --phase=$SCAN_PHASE
 
 echo ""
 echo "[run_pipeline] === Step 7: Assemble pipeline output JSON ==="

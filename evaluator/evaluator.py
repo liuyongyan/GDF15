@@ -227,16 +227,13 @@ def render_verbose_diagnostic(output_json: dict, expected: dict, thresholds: dic
         lines.append(f"### platform_post_hoc_compatibility")
         lines.append(f"- criterion: {cb.get('criterion')}")
         lines.append(f"- severity: {cb.get('severity')}")
-        # Read the platform_compatibility TSV (most recent round)
+        # Read the platform_compatibility TSV from the SAME round directory as the input JSON
         import csv as _csv
-        platform_tsv = None
-        runs_dir = Path(__file__).resolve().parent.parent / "runs"
-        if runs_dir.exists():
-            for d in sorted(runs_dir.iterdir(), reverse=True):
-                tsv = d / "platform_compatibility_top25.tsv"
-                if tsv.exists():
-                    platform_tsv = tsv
-                    break
+        input_path = Path(args.input).resolve()
+        # The TSV is alongside the input output.json in runs/round_N/
+        platform_tsv = input_path.parent / "platform_compatibility_top25.tsv"
+        if not platform_tsv.exists():
+            platform_tsv = None
         target_platform_result = None
         if platform_tsv:
             with platform_tsv.open() as f:
