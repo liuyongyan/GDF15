@@ -338,12 +338,15 @@ EOF
 import json, sys
 sys.path.insert(0, sys.argv[6])
 from blocker_normalization import normalize_blockers
+from adjudication_binding import bind_adjudications
 verdict_path, round_num, reason, fail_personas_json, per_persona_json, _reviewers_dir = sys.argv[1:7]
 fail_personas = json.loads(f"[{fail_personas_json}]") if fail_personas_json.strip() else []
 per_persona = json.loads(per_persona_json)
 # Single shared normalization path (AC-5)
 blockers_remaining = normalize_blockers(per_persona)
 total_blockers = sum(int((p or {}).get("blockers_count", 0) or 0) for p in per_persona.values() if isinstance(p, dict))
+# Run-local adjudication binding (AC-11 R2 fix): pull matching canonical entries
+adjudications = bind_adjudications(per_persona, blockers_remaining, int(round_num))
 doc = {
     "schema_version": "1.0",
     "round": int(round_num),
@@ -363,6 +366,7 @@ doc = {
             f"Aggregated {total_blockers} parsed blocker(s) from personas that returned valid JSON",
         ],
         "cross_reviewer_agreement_summary": f"Partial — some personas unavailable; {total_blockers} parsed blockers preserved",
+        "adjudications": adjudications,
     },
     "blockers_remaining": blockers_remaining,
 }
@@ -387,11 +391,14 @@ python3 - "$VERDICT_JSON" "$ROUND_NUMBER" "$mode" "$status_msg" "$per_persona_js
 import json, sys
 sys.path.insert(0, sys.argv[6])
 from blocker_normalization import normalize_blockers
+from adjudication_binding import bind_adjudications
 verdict_path, round_num, mode, status_msg, per_persona_json, _reviewers_dir = sys.argv[1:7]
 per_persona = json.loads(per_persona_json)
 # Single shared normalization path (AC-5) — same logic used in deferred mode
 blockers_remaining = normalize_blockers(per_persona)
 total_blockers_parsed = sum(int((p or {}).get("blockers_count", 0) or 0) for p in per_persona.values() if isinstance(p, dict))
+# Run-local adjudication binding (AC-11 R2 fix): pull matching canonical entries
+adjudications = bind_adjudications(per_persona, blockers_remaining, int(round_num))
 # Use the propagated-blocker count for verdict labeling (not the raw parsed count,
 # which may include "None"/empty placeholder blockers that normalization drops).
 n_real_blockers = len(blockers_remaining)
@@ -412,6 +419,7 @@ doc = {
         "single_reviewer_blockers": blockers_remaining,
         "pipeline_methodology_concerns": [],
         "cross_reviewer_agreement_summary": f"All 6 personas reviewed ({status_msg}); total parsed blockers across personas = {total_blockers}",
+        "adjudications": adjudications,
     },
     "blockers_remaining": blockers_remaining,
 }

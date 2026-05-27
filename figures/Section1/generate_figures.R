@@ -105,6 +105,20 @@ warn_skip <- function(fig_id, artifact) {
       file = stderr())
 }
 
+# R2 fix: skip_fig also unlinks stale PNG/PDF so an old figure does not linger and mislead.
+skip_fig <- function(fig_id, artifact, basename) {
+  png_path <- file.path(out_dir, paste0(basename, ".png"))
+  pdf_path <- file.path(out_dir, paste0(basename, ".pdf"))
+  unlinked <- character()
+  if (file.exists(png_path)) { unlink(png_path); unlinked <- c(unlinked, basename(png_path)) }
+  if (file.exists(pdf_path)) { unlink(pdf_path); unlinked <- c(unlinked, basename(pdf_path)) }
+  msg <- sprintf("generate_figures: SKIP Fig %s — missing artifact: %s", fig_id, artifact)
+  if (length(unlinked) > 0) {
+    msg <- paste0(msg, sprintf(" (removed stale: %s)", paste(unlinked, collapse = ", ")))
+  }
+  cat(msg, "\n", file = stderr())
+}
+
 save_fig <- function(plt, basename, w = 8, h = 6) {
   png_path <- file.path(out_dir, paste0(basename, ".png"))
   pdf_path <- file.path(out_dir, paste0(basename, ".pdf"))
@@ -156,7 +170,7 @@ adj_json <- read_json_safe(file.path(repo_root, "pipeline", "audits", "reviewer_
 # Fig 2 — Candidate universe summary
 # ============================================================
 if (is.null(output_json)) {
-  warn_skip("2", file.path(run_dir, "output.json"))
+  skip_fig("2", file.path(run_dir, "output.json"), "Fig2_candidate_universe")
 } else {
   n_total <- output_json$ranked_targets_full_count %||% length(output_json$ranked_targets)
   n_top25 <- min(25, length(output_json$ranked_targets))
@@ -183,7 +197,7 @@ if (is.null(output_json)) {
 # Fig 3 — Per-dim z-score heatmap (top 25)
 # ============================================================
 if (is.null(output_json) || length(output_json$ranked_targets) == 0) {
-  warn_skip("3", file.path(run_dir, "output.json"))
+  skip_fig("3", file.path(run_dir, "output.json"), "Fig3_per_dim_heatmap")
 } else {
   ranked <- output_json$ranked_targets[seq_len(min(25, length(output_json$ranked_targets)))]
   heat_df <- do.call(rbind, lapply(ranked, function(r) {
@@ -211,7 +225,7 @@ if (is.null(output_json) || length(output_json$ranked_targets) == 0) {
             plot.title = element_text(face = "bold"))
     save_fig(p3, "Fig3_per_dim_heatmap", w = 10, h = 8)
   } else {
-    warn_skip("3", "per_dimension_scores not present in ranked_targets")
+    skip_fig("3", "per_dimension_scores not present in ranked_targets", "Fig3_per_dim_heatmap")
   }
 }
 
@@ -219,7 +233,7 @@ if (is.null(output_json) || length(output_json$ranked_targets) == 0) {
 # Fig 4 — Composite ranking (top 25)
 # ============================================================
 if (is.null(output_json) || length(output_json$ranked_targets) == 0) {
-  warn_skip("4", file.path(run_dir, "output.json"))
+  skip_fig("4", file.path(run_dir, "output.json"), "Fig4_composite_ranking")
 } else {
   ranked <- output_json$ranked_targets[seq_len(min(25, length(output_json$ranked_targets)))]
   comp_df <- data.frame(
@@ -244,7 +258,7 @@ if (is.null(output_json) || length(output_json$ranked_targets) == 0) {
 # Fig 5 — Anti-bias gauntlet PASS/FAIL panel
 # ============================================================
 if (is.null(val_summary)) {
-  warn_skip("5", file.path(run_dir, "anti_bias", "_validation_summary.json"))
+  skip_fig("5", file.path(run_dir, "anti_bias", "_validation_summary.json"), "Fig5_anti_bias_gauntlet")
 } else {
   statuses <- val_summary$statuses
   ab_df <- do.call(rbind, lapply(statuses, function(s) {
@@ -284,7 +298,7 @@ if (is.null(val_summary)) {
 # Fig 6 — Reviewer ensemble (per-persona blocker count + adjudication)
 # ============================================================
 if (is.null(verdict)) {
-  warn_skip("6", file.path(run_dir, "reviewer_ensemble_verdict.json"))
+  skip_fig("6", file.path(run_dir, "reviewer_ensemble_verdict.json"), "Fig6_reviewer_ensemble")
 } else {
   per <- verdict$per_persona
   rev_df <- do.call(rbind, lapply(names(per), function(p) {
@@ -326,7 +340,7 @@ if (is.null(verdict)) {
 # Fig 7 — Post-hoc platform compatibility funnel
 # ============================================================
 if (is.null(platform_tsv)) {
-  warn_skip("7", file.path(run_dir, "platform_compatibility_top25.tsv"))
+  skip_fig("7", file.path(run_dir, "platform_compatibility_top25.tsv"), "Fig7_post_hoc_platform")
 } else {
   # Expect columns: rank, candidate, ..., compatibility status
   status_col <- NULL

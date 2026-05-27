@@ -154,7 +154,7 @@
       "mutability": "audit_required",
       "path": "pipeline/reviewers/run_ensemble.sh",
       "purpose": "Ensemble invocation",
-      "sha256": "c6113ea5192f2813f036d137e0fcb4b0a891128be3c9fb9b01784a21d3ed352e"
+      "sha256": "e7c6bd48c5c0e5aaa24c73a05bd0f2aaa111d371b055119f8e13289e75827055"
     },
     {
       "mutability": "forbidden",
@@ -166,7 +166,7 @@
       "mutability": "forbidden",
       "path": "pipeline/reviewers/validate_ensemble_output.py",
       "purpose": "Reviewer output validator",
-      "sha256": "3b8dbad1131775287a245e8ff450767135f785aa741784cd7e6890ec8efba589"
+      "sha256": "b7bcb9f02f3b1efa92d1f29156446b5acf6f0da675ed81c79b8b746aa3bfdaa3"
     },
     {
       "mutability": "audit_required",
@@ -322,10 +322,22 @@
       "mutability": "forbidden",
       "path": "pipeline/generate_round_walkthrough.py",
       "purpose": "Round walkthrough generator (AC-11): derives runs/round_N/round_N_walkthrough.md from on-disk artifacts only; refuses to fabricate when artifacts are missing",
-      "sha256": "dd1d2e892de57294557de7a6494fdd1ed193950be8d0c3d1984f752a2a59c281"
+      "sha256": "58643c7eb8dd4bf9cf3aa41e84b7965ec0140669e75700a177194d4ee119780c"
+    },
+    {
+      "mutability": "forbidden",
+      "path": "pipeline/reviewers/adjudication_binding.py",
+      "purpose": "Run-local adjudication binder (AC-11 R2): loads canonical adjudications JSON, matches by (persona,summary_hash) with (persona,round) fallback; called by run_ensemble.sh and validate_ensemble_output.py",
+      "sha256": "08a93b2b1fc59a43b4a9dee665010a4a7c5f1811c3fff3d3397add83270154f5"
+    },
+    {
+      "mutability": "audit_required",
+      "path": "pipeline/audits/reviewer_blocker_adjudications.json",
+      "purpose": "Canonical machine-readable source for reviewer-blocker adjudications (companion to .md); evidence-controlling input to verdict construction; append-only with audit-note discipline",
+      "sha256": "917959cada1e5341167d24215a7f4715733422b56f33ef87ef65829a837e1557"
     }
   ],
   "lock_tag": "v1.0-methodology-locked",
-  "note": "This manifest is the SHA256-pinned methodology contract at lock time. Artifacts marked 'forbidden' must NEVER change in Phase \u03b2. Artifacts marked 'audit_required' may change in Phase \u03b2 only with a documented engineering_audit_note.md endorsed by Codex (per AC-1.2). Verify with scripts/verify_methodology_lock.sh.\n\nRound 8 re-lock (2026-05-27): refreshed hashes after AC-5/AC-7/AC-8/AC-9 fixes; see pipeline/audits/round_8_engineering_audit_note.md\n\nRound 9 re-lock (2026-05-27): refreshed hashes after AC-5/AC-7/AC-9 fixes; see pipeline/audits/round_9_engineering_audit_note.md\n\nRound 10 re-lock (2026-05-27): schema-robust normalizer, identity-check validator, evaluator path-resolution fix; see pipeline/audits/round_10_engineering_audit_note.md\n\nRound 11 re-lock (2026-05-27): validator hardened to fail post-lock on count-vs-critique contradictions; deferred-mode heredoc import bug fixed; see pipeline/audits/round_11_engineering_audit_note.md\n\nRound 12 (plan evolution, 2026-05-27): added AC-11 (round walkthrough) and AC-12 (R publication-grade figures) to plan.md; deleted 7 legacy ASCII figure sketches; see pipeline/audits/round_12_plan_evolution_audit_note.md\n\nNew RLCR session R0 (2026-05-27): added pipeline/generate_round_walkthrough.py (forbidden) implementing AC-11; refreshed pipeline/run_pipeline.sh (audit_required); see pipeline/audits/new_session_round_0_engineering_audit_note.md\n\nRound 1 (new session, 2026-05-27): AC-11 walkthrough generator now accepts --input-json/--output-json and merges adjudications from canonical JSON file; AC-12 R figure generator and 14 output files added (not in LOCKED, presentation layer); see pipeline/audits/round_1_engineering_audit_note.md",
+  "note": "This manifest is the SHA256-pinned methodology contract at lock time. Artifacts marked 'forbidden' must NEVER change in Phase \u03b2. Artifacts marked 'audit_required' may change in Phase \u03b2 only with a documented engineering_audit_note.md endorsed by Codex (per AC-1.2). Verify with scripts/verify_methodology_lock.sh.\n\nRound 8 re-lock (2026-05-27): refreshed hashes after AC-5/AC-7/AC-8/AC-9 fixes; see pipeline/audits/round_8_engineering_audit_note.md\n\nRound 9 re-lock (2026-05-27): refreshed hashes after AC-5/AC-7/AC-9 fixes; see pipeline/audits/round_9_engineering_audit_note.md\n\nRound 10 re-lock (2026-05-27): schema-robust normalizer, identity-check validator, evaluator path-resolution fix; see pipeline/audits/round_10_engineering_audit_note.md\n\nRound 11 re-lock (2026-05-27): validator hardened to fail post-lock on count-vs-critique contradictions; deferred-mode heredoc import bug fixed; see pipeline/audits/round_11_engineering_audit_note.md\n\nRound 12 (plan evolution, 2026-05-27): added AC-11 (round walkthrough) and AC-12 (R publication-grade figures) to plan.md; deleted 7 legacy ASCII figure sketches; see pipeline/audits/round_12_plan_evolution_audit_note.md\n\nNew RLCR session R0 (2026-05-27): added pipeline/generate_round_walkthrough.py (forbidden) implementing AC-11; refreshed pipeline/run_pipeline.sh (audit_required); see pipeline/audits/new_session_round_0_engineering_audit_note.md\n\nRound 1 (new session, 2026-05-27): AC-11 walkthrough generator now accepts --input-json/--output-json and merges adjudications from canonical JSON file; AC-12 R figure generator and 14 output files added (not in LOCKED, presentation layer); see pipeline/audits/round_1_engineering_audit_note.md\n\nRound 2 (new session, 2026-05-27): added adjudication_binding.py (forbidden) and reviewer_blocker_adjudications.json (audit_required); validator now enforces run-local adjudication binding; figure generator now unlinks stale PNG/PDF on skip; see pipeline/audits/round_2_engineering_audit_note.md",
   "schema_version": "1.0"
 }

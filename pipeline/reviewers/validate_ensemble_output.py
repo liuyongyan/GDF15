@@ -187,6 +187,33 @@ def main(argv: list[str]) -> int:
     if "blockers_remaining" not in doc:
         errors.append("missing blockers_remaining array")
 
+    # AC-11 R2: if a canonical adjudication exists for any propagated blocker, the verdict's
+    # meta_review.adjudications MUST include the matching entry (run-local binding, not sidecar).
+    if "blockers_remaining" in doc:
+        try:
+            import sys as _sys
+            from pathlib import Path as _Path
+            _sys.path.insert(0, str(_Path(__file__).resolve().parent))
+            from adjudication_binding import bind_adjudications
+            expected = bind_adjudications(
+                per_persona=doc.get("per_persona", {}),
+                blockers_remaining=doc.get("blockers_remaining", []),
+                round_num=int(doc.get("round", 0)),
+            )
+            verdict_adj = doc.get("meta_review", {}).get("adjudications", []) or []
+            verdict_ids = {a.get("adjudication_id") for a in verdict_adj if isinstance(a, dict)}
+            for exp in expected:
+                if exp.get("adjudication_id") not in verdict_ids:
+                    errors.append(
+                        f"verdict.meta_review.adjudications missing canonical entry "
+                        f"{exp.get('adjudication_id')} for propagated blocker "
+                        f"({exp.get('persona')}, hash={exp.get('blocker_summary_hash')}); "
+                        f"run-local binding required (AC-11 R2)"
+                    )
+        except (ImportError, ValueError, TypeError) as _e:
+            print(f"validate_ensemble_output: WARN - adjudication binding check skipped: {_e}",
+                  file=sys.stderr)
+
     if errors:
         print(f"validate_ensemble_output: FAIL - {len(errors)} error(s):", file=sys.stderr)
         for e in errors:

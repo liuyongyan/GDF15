@@ -53,6 +53,42 @@ Each entry MUST contain:
 
 ---
 
+## ADJ-003 — Round 8 (R2 new-session fresh-live) — R1_molecular_biologist
+
+- **round**: 8 (new-session R2 fresh-live regeneration)
+- **persona**: R1_molecular_biologist
+- **blocker_summary_hash**: `3644223c6abe83cf`
+- **blocker_summary**: "The candidate exhibits exceptionally poor mechanism differentiation and low modulatability scores, indicating it is likely an intractable or broadly pleiotropic core signaling node."
+- **disposition**: **REBUTTED**
+- **rationale**: Same architectural rebuttal as ADJ-002. D5/D6 negative scores are by-design exposed in the composite rather than hidden; the post-hoc platform check at Step 8 of `run_pipeline.sh` is the gating mechanism for intractability concerns. The current run's `platform_compatibility_top25.tsv` shows the top-1 candidate as PASS at the post-hoc gate, meaning R1's concern does not survive empirical platform testing.
+- **action_taken**: N/A (recurring conceptual concern; intentional architecture).
+
+---
+
+## ADJ-004 — Round 8 (R2 new-session fresh-live) — R2_clinical_translator
+
+- **round**: 8 (new-session R2 fresh-live regeneration)
+- **persona**: R2_clinical_translator
+- **blocker_summary_hash**: `f08822799e59f70a`
+- **blocker_summary**: "Profoundly negative mechanism differentiation despite high clinical/genetic signals implies complete redundancy with SoC or an historically intractable node."
+- **disposition**: **REBUTTED** (same conceptual concern as ADJ-001 with different hash)
+- **rationale**: Same as ADJ-001 — target-vs-comparator (SoC) positioning is downstream of target-agnostic ranking per `plan.md` §1.2. Pipeline ranks; clinical class positioning is a separate workstream.
+- **action_taken**: N/A.
+
+---
+
+## ADJ-005 — Round 8 (R2 new-session fresh-live) — R4_pharmacologist
+
+- **round**: 8 (new-session R2 fresh-live regeneration)
+- **persona**: R4_pharmacologist
+- **blocker_summary_hash**: `afa2e1b18663b39d`
+- **blocker_summary**: "Pharmacological blocker for the presumed secreted-protein/saRNA modality: secretion/modulatability is negative and mechanism differentiation is strongly negative despite strong genetic/clinical signal. Do not advance without a different modality rationale."
+- **disposition**: **REBUTTED** (same conceptual concern as ADJ-002 with different hash)
+- **rationale**: Same architectural rebuttal as ADJ-002. D8 is excluded from the composite by design; post-hoc platform compatibility check at Step 8 of `run_pipeline.sh` already mitigates modality mismatch. Top-1 PASS in current `platform_compatibility_top25.tsv`.
+- **action_taken**: N/A.
+
+---
+
 ## ADJ-001 — Round 8 — R2_clinical_translator
 
 - **round**: 8

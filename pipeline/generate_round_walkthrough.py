@@ -248,27 +248,43 @@ def main() -> int:
                 f"prompt_hash=`{(body.get('prompt_hash','') or '')[:8]}…`"
             )
         propagated = verdict.get("blockers_remaining", []) or []
-        # Merge adjudications from verdict + canonical JSON file (dedupe by hash, prefer JSON)
+        # AC-11 R2 fix: read verdict.meta_review.adjudications FIRST (run-local source of truth);
+        # canonical JSON acts only as a historical fallback for old verdicts that pre-date R2.
         verdict_adj = verdict.get("meta_review", {}).get("adjudications", []) or []
         json_adj = (adjudications_json or {}).get("adjudications", []) or []
         adj_by_hash: dict = {}
+        adj_by_persona_round: dict = {}
+        # Verdict adjudications (primary; run-local)
         for a in verdict_adj:
             if isinstance(a, dict) and a.get("blocker_summary_hash"):
                 adj_by_hash[a["blocker_summary_hash"]] = a
-        for a in json_adj:
-            if isinstance(a, dict) and a.get("blocker_summary_hash"):
-                adj_by_hash[a["blocker_summary_hash"]] = a  # canonical JSON wins
-        # Also index by (persona, round) for hashless adjudications (e.g., ADJ-001)
-        adj_by_persona_round: dict = {}
-        for a in json_adj:
-            if isinstance(a, dict) and not a.get("blocker_summary_hash"):
+            elif isinstance(a, dict):
                 key = (a.get("persona"), a.get("round"))
                 adj_by_persona_round[key] = a
+        # Canonical JSON (fallback for old verdicts only)
+        for a in json_adj:
+            if isinstance(a, dict) and a.get("blocker_summary_hash") and a["blocker_summary_hash"] not in adj_by_hash:
+                adj_by_hash[a["blocker_summary_hash"]] = a
+            elif isinstance(a, dict) and not a.get("blocker_summary_hash"):
+                key = (a.get("persona"), a.get("round"))
+                if key not in adj_by_persona_round:
+                    adj_by_persona_round[key] = a
         rv_results.append(
             f"- Propagated blockers: **{len(propagated)}**; "
             f"recorded adjudications (verdict={len(verdict_adj)}, "
-            f"canonical JSON={len(json_adj)}, merged unique by hash={len(adj_by_hash)})."
+            f"canonical JSON={len(json_adj)}, total unique = {len(adj_by_hash) + len(adj_by_persona_round)})."
         )
+        # Also report unbound_blockers (count-vs-critique contradictions)
+        unbound = verdict.get("meta_review", {}).get("unbound_blockers", {}) or {}
+        if unbound:
+            rv_results.append(f"- Unbound blockers (count-vs-critique contradictions): {len(unbound)}")
+            for persona, entry in unbound.items():
+                if isinstance(entry, dict):
+                    rv_results.append(
+                        f"  - `{persona}` ({entry.get('disposition','?')}): "
+                        f"declared={entry.get('blockers_count_declared','?')}, "
+                        f"extracted={entry.get('normalized_blockers_extracted','?')}"
+                    )
         if propagated:
             rv_results.append("- Propagated blocker excerpts (truncated to 200 chars) + adjudication status:")
             for b in propagated:
@@ -340,7 +356,7 @@ def main() -> int:
 
     # Step 9 — Source leakage scan
     lines.extend(_section("Step 9 — Source-code leakage scan", _what_why_results(
-        what="Ran `bash scripts/scan_target_leakage.sh pipeline` to grep all pipeline source for the forbidden-identifier list defined in `scripts/FORBIDDEN_TARGET_NAMES.txt` (target gene symbols, aliases, and Ensembl ID held by the External Evaluator).",
+        what="Ran `bash scripts/scan_target_leakage.sh pipeline` to grep all pipeline source for the forbidden-identifier patterns embedded in the scanner (target gene symbols, aliases, and Ensembl ID held by the External Evaluator). The related allowlist of expected redacted tokens lives at `pipeline/reviewers/FORBIDDEN_TARGET_NAMES.txt` (consumed by `redact_forbidden.py`).",
         why="AC-2 negative test: the pipeline code itself must not know the expected target name. Any leaked identifier would break the target-blind methodology guarantee and invalidate the ranking as objective.",
         results=[f"- PASS (pipeline proceeded to Step 10; zero hits in the pipeline tree)."],
     )))

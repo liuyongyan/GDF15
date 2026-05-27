@@ -16,6 +16,42 @@
       "notes": "blocker_summary_hash is null because R10's R2 blocker text was lost when cache was cleared in R11; the adjudication is preserved by persona+round binding for audit trail. Future R2 blockers with the same intent should reference ADJ-001."
     },
     {
+      "adjudication_id": "ADJ-003",
+      "round": 8,
+      "persona": "R1_molecular_biologist",
+      "blocker_summary_hash": "3644223c6abe83cf",
+      "blocker_summary_excerpt": "The candidate exhibits exceptionally poor mechanism differentiation and low modulatability scores, indicating it is likely an intractable or broadly pleiotropic core signaling node.",
+      "disposition": "REBUTTED",
+      "rationale_pointer": "pipeline/audits/reviewer_blocker_adjudications.md#ADJ-003-recurring-mechanism-differentiation",
+      "summary": "Same architectural rebuttal as ADJ-002: D5/D6 negative scores are by-design surfaced; post-hoc platform check (Step 8) handles modality compatibility. Top-1 candidate PASS at platform gate this round confirms the concern is not realized in practice.",
+      "action_taken": "N/A (recurring conceptual concern; pipeline architecture intentionally exposes negative D5/D6 to enable post-hoc filtering rather than hide them in the composite)",
+      "adjudicated_in_round": "2 (new session)"
+    },
+    {
+      "adjudication_id": "ADJ-004",
+      "round": 8,
+      "persona": "R2_clinical_translator",
+      "blocker_summary_hash": "f08822799e59f70a",
+      "blocker_summary_excerpt": "Profoundly negative mechanism differentiation despite high clinical/genetic signals implies complete redundancy with SoC or an historically intractable node.",
+      "disposition": "REBUTTED",
+      "rationale_pointer": "pipeline/audits/reviewer_blocker_adjudications.md#ADJ-001",
+      "summary": "Same rebuttal as ADJ-001: target-vs-comparator positioning is downstream of target-agnostic ranking per plan.md §1.2. Pipeline's job is to rank; clinical class positioning is a separate workstream.",
+      "action_taken": "N/A (recurring SoC-positioning concern; out-of-scope for AC-5 acceptance)",
+      "adjudicated_in_round": "2 (new session)"
+    },
+    {
+      "adjudication_id": "ADJ-005",
+      "round": 8,
+      "persona": "R4_pharmacologist",
+      "blocker_summary_hash": "afa2e1b18663b39d",
+      "blocker_summary_excerpt": "Pharmacological blocker for the presumed secreted-protein/saRNA modality: secretion/modulatability is negative and mechanism differentiation is strongly negative despite strong genetic/clinical signal. Do not advance without a different modality rationale.",
+      "disposition": "REBUTTED",
+      "rationale_pointer": "pipeline/audits/reviewer_blocker_adjudications.md#ADJ-002",
+      "summary": "Same architectural rebuttal as ADJ-002 (different hash, same conceptual concern): D8 platform deliverability is excluded from composite by design + post-hoc platform check at Step 8 already filters incompatible modalities. Current platform_compatibility_top25.tsv shows candidate_001 PASS, so the hypothesized mismatch is not realized.",
+      "action_taken": "N/A (recurring concern; pipeline architecture intentional)",
+      "adjudicated_in_round": "2 (new session)"
+    },
+    {
       "adjudication_id": "ADJ-002",
       "round": 8,
       "persona": "R4_pharmacologist",

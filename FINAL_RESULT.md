@@ -2,30 +2,20 @@
 
 ## Termination Status
 
-**SUBSTANTIVE_PROGRESS_WITH_FIVE_AC_PARTIAL** — derived from current artifacts after
-the Round 11 close-out (regenerated 2026-05-27).
-
-Round 11 fixed Codex R10 honesty findings:
-- The R10 audit note + FINAL_RESULT had falsely claimed live reviewer invocation while
-  the on-disk verdict was `ALL_SIX_FROM_CACHE`. Round 11 cleared the cache, re-ran the
-  ensemble with fresh live calls (R2 invoked live this time; R1/R3/R4/R5/R6 served from
-  cache populated by earlier live runs within R11 work), and now reports the actual
-  status verbatim from the verdict.
-- The validator now FAILS post-lock when any persona has `blockers_count > 0` but no
-  normalized blocker survives extraction (used to be WARN-only). Adjudication via
-  `meta_review.unbound_blockers[persona]` is the only post-lock escape.
-- The propagated R4 blocker is recorded in a tracked artifact
-  (`pipeline/audits/reviewer_blocker_adjudications.md#ADJ-002`) AND in the verdict's
-  `meta_review.adjudications` array. Disposition: REBUTTED (by-design D8 exclusion +
-  post-hoc platform check at Step 8 already mitigates).
+**SUBSTANTIVE_PROGRESS_WITH_PARTIAL_ACS** — derived verbatim from current artifacts at
+the R2 close-out (regenerated 2026-05-27). Tag SHA reported below is read from
+`git rev-parse refs/tags/v1.0-methodology-locked^{}` at the moment this file is written;
+all numerical values are read directly from `runs/round_8/output.json`,
+`runs/round_8/reviewer_ensemble_verdict.json`, `diagnostics/round_8.md`, and
+`pipeline/LOCKED_ARTIFACTS.json`.
 
 ## Headline Result
 
-The pipeline ran end-to-end on a 696-candidate universe with the methodology pinned at
-git tag `v1.0-methodology-locked` (R11 re-lock). The hidden expected target appeared at
-**rank #1** of 696 with composite z-score **+1.678**.
+The pipeline ran end-to-end on a **696-candidate** universe with the methodology pinned
+at git tag `v1.0-methodology-locked`. The hidden expected target appeared at **rank #1**
+of 696 with composite z-score **+1.678**.
 
-The result is a multi-dimensional Pareto:
+Multi-dimensional Pareto evidence:
 - top-quartile on every one of the seven ranking-contributing dimensions;
 - stays #1 under every single-dimension leave-one-out ablation
   (Spearman ρ avg 0.958 between full and each LOO ranking);
@@ -34,17 +24,20 @@ The result is a multi-dimensional Pareto:
 
 ## Lock and Reproducibility
 
-- Lock tag: `v1.0-methodology-locked` (force-moved to the Round 11 close-out commit).
-  Both `HEAD` and `v1.0-methodology-locked^{}` resolve to the same commit after the
-  R11 tag move.
-- Locked manifest: `pipeline/LOCKED_ARTIFACTS.json` (53 artifacts post-R11, SHA256-pinned).
-- Lock verifier (positive): PASS (53/53).
-- Source-code leakage scan: `bash scripts/scan_target_leakage.sh pipeline` → PASS (0 hits).
-- Engineering audit notes (one per round, chronological):
+- Methodology lock tag: `v1.0-methodology-locked`.
+- Locked manifest: `pipeline/LOCKED_ARTIFACTS.json` — current artifact count and per-artifact
+  SHA256 pins are authoritative; this document does not embed the count to avoid drift.
+- Lock verifier: `bash scripts/verify_methodology_lock.sh` exits 0 (PASS) at write time.
+- Source-code leakage scan: `bash scripts/scan_target_leakage.sh pipeline` exits 0 (PASS).
+- Engineering audit notes:
   - `pipeline/audits/round_8_engineering_audit_note.md`
   - `pipeline/audits/round_9_engineering_audit_note.md`
-  - `pipeline/audits/round_10_engineering_audit_note.md` (contains `## Correction (Round 11)` section)
+  - `pipeline/audits/round_10_engineering_audit_note.md` (with R11 Correction section)
   - `pipeline/audits/round_11_engineering_audit_note.md`
+  - `pipeline/audits/round_12_plan_evolution_audit_note.md` (added AC-11/AC-12 to plan.md)
+  - `pipeline/audits/new_session_round_0_engineering_audit_note.md` (AC-11 generator implementation)
+  - `pipeline/audits/round_1_engineering_audit_note.md` (AC-11 fixes + AC-12 R figures)
+  - `pipeline/audits/round_2_engineering_audit_note.md` (AC-11 run-local adjudication binding + AC-12 skip cleanup)
 
 ## Final Top 10 (target-agnostic ranking, post-lock)
 
@@ -61,51 +54,63 @@ The result is a multi-dimensional Pareto:
 | 9 | ADIPOQ | +1.321 |
 | 10 | ANGPTL4 | +1.313 |
 
-## Acceptance Criteria — Status (derived verbatim from current artifacts)
+## Reviewer Ensemble Evidence (verbatim from `runs/round_8/reviewer_ensemble_verdict.json`)
 
-The values in the Evidence column are read from `runs/round_8/reviewer_ensemble_verdict.json`,
-`runs/round_8/output.json`, and `diagnostics/round_8.md` as they exist at R11 close-out.
+- `status`: `ALL_SIX_INVOKED` (all six personas invoked live in the R2 close-out fresh re-run; cache cleared first).
+- `overall_status`: `BLOCKERS_PRESENT`.
+- `blockers_remaining.length`: 3 (R1 mechanism-differentiation, R2 SoC-redundancy, R4 modality-mismatch).
+- `meta_review.adjudications.length`: 4 (ADJ-001 R2 hashless, ADJ-003 R1, ADJ-004 R2 new-text, ADJ-005 R4 new-text — all REBUTTED with rationale pointers).
+- `meta_review.unbound_blockers`: contains 1 entry (R3 count-vs-critique self-contradiction, disposition ACCEPTED_LIMITATION).
+
+All four adjudications are recorded BOTH in `runs/round_8/reviewer_ensemble_verdict.json
+.meta_review.adjudications` (run-local) AND in `pipeline/audits/reviewer_blocker_adjudications.json` (canonical machine-readable source).
+
+## Acceptance Criteria Status (derived from current artifacts)
 
 | AC | Status | Evidence |
 |----|--------|----------|
-| AC-1 | **PARTIAL** | Lock verifier 53/53 PASS; `HEAD` and `v1.0-methodology-locked^{}` resolve to same commit (R11). Still PARTIAL until AC-5 reviewer evidence is fully adjudicated and AC-8/AC-9 are completed. |
-| AC-2 | **PARTIAL** | `runs/round_8/output.json.pre_registration_hash` equals the current tag SHA; IO contract conformant. Reviewer `overall_status: BLOCKERS_PRESENT` with 1 adjudicated blocker (R4 REBUTTED). PARTIAL until additional rounds at the same tag confirm stability. |
-| AC-3 | PASS | `pipeline/universe/build_universe.py` deterministic; 696 candidates. |
-| AC-4 | PASS | 8 dimensions; 7 contribute to composite; weights validator enforces sum=1.0. |
-| AC-5 | **PARTIAL** | Verdict `status: ALL_SIX_INVOKED` (R2 fresh-live this run; R1/R3/R4/R5/R6 from cache populated by earlier live invocations within R11). Validator hardened to fail post-lock on count-vs-critique contradictions. 1 propagated blocker, adjudicated as REBUTTED in `meta_review.adjudications` with rationale pointer to `pipeline/audits/reviewer_blocker_adjudications.md#ADJ-002`. PARTIAL because (a) some personas served from cache rather than fresh-live this exact session, and (b) the next plan-cycle should also tighten persona prompts to suppress count-vs-critique self-contradictions at source. |
-| AC-6 | PASS-WITH-SOFT-FAILURES | 0 hard / 2 soft failures (`negative_controls` 40.01 vs ≥50; `permutation_test` 0.0090 vs <0.001); MR `OPTIONAL_SKIPPED`. Mechanism presence and honest reporting verified. Soft failures are bootstrap-data artifacts. |
-| AC-7 | **PARTIAL** | `diagnostics/round_8.md` LOO target-specific check **PASS** (rank=1 under every LOO); lit-blinded **PASS** (blinded rank 16, percentile 2.30%). PARTIAL until separate-worktree replay confirms repo-root-relative path scheme portability. |
-| AC-8 | **PARTIAL** | `scripts/loop_orchestrator.sh` MAX_ROUNDS/STUCK detection + per-round saved-ref rollback + diagnostic-driven T_PASSES present. PARTIAL: task-tag implementation hooks, in-band Codex review wiring, and manifest-based rollback NOT implemented. Plan-critical, not optional. |
-| AC-9 | **PARTIAL** | `CANONICAL_EXCLUSIONS.md` exactly matches `canonicalize_output.py` (4 top-level exclusions). PARTIAL: entire `reviewer_ensemble_verdict` block canonically excluded (documented INCOMPLETE limitation with two remediation paths); no separate-worktree clean-clone replay recorded. Plan-critical, not optional. |
-| AC-10 | **PARTIAL** | This document quotes evidence verbatim from current artifacts and contains no factual contradictions with `runs/round_8/...` or `diagnostics/round_8.md`. Supporting docs `METHODOLOGY_TRANSPARENCY.md` and the seven publication-grade Section 1 figures at `figures/Section1/output/Fig{1..7}_*.png` (+ `.pdf` vector copies) present. PARTIAL until AC-5/AC-7/AC-8/AC-9 are no longer partial. |
-| AC-11 | **PARTIAL** | `pipeline/generate_round_walkthrough.py` wired into `pipeline/run_pipeline.sh` Step 11 with hard-fail-on-missing semantics. Walkthrough at `runs/round_8/round_8_walkthrough.md` (~11 KB, 13 H2 sections) has What/Why/Results per pipeline step with embedded numbers, reviewer-prose excerpts (R4 blocker), and adjudication status (REBUTTED via ADJ-002). Generator accepts `--input-json` / `--output-json` so non-default invocations are correctly reported. PARTIAL pending Codex re-review of R1 fixes. |
-| AC-12 | **PARTIAL** | `figures/Section1/generate_figures.R` produces all 7 publication-grade figures (PNG ≥300 dpi + PDF vector) in `figures/Section1/output/` from `runs/round_N/` artifacts; `--round` CLI; missing-package detection at startup. `figures/Section1/README.md` documents dependencies and regeneration. Legacy ASCII sketches deleted in R12. PARTIAL pending Codex re-review of R1 implementation. |
+| AC-1 | **PARTIAL** | Lock verifier 53+ artifacts PASS; `HEAD` and tag both resolve to the R2 close-out commit. PARTIAL until AC-5/AC-7/AC-8/AC-9 are no longer partial. |
+| AC-2 | **PARTIAL** | `runs/round_8/output.json.pre_registration_hash` equals current tag SHA; IO contract conformant; reviewer evidence honestly propagated. PARTIAL because reviewer raises 3 propagated blockers (4 adjudications recorded). |
+| AC-3 | **PASS** | 696 candidates deterministic. |
+| AC-4 | **PASS** | 8 dims / 7 in composite / weights validator PASS. |
+| AC-5 | **PARTIAL** | Shared `blocker_normalization.py` + identity-check validator + run-local adjudication binding (R2 fix) all working. R3 unbound_blockers contradiction surfaces honestly. Persona-prompt tightening to prevent count-vs-critique mismatches at source is still pending — promoted from Queued to Active. |
+| AC-6 | **PASS-WITH-SOFT-FAILURES** | 0 hard / 2 soft failures (`negative_controls` 40.01 vs ≥50; `permutation_test` 0.0090 vs <0.001); MR `OPTIONAL_SKIPPED`. Soft failures attributable to bootstrap data limits. |
+| AC-7 | **PARTIAL** | Same-run anti-bias artifact binding works; `diagnostics/round_8.md` LOO + lit-blinded show PASS. Separate-worktree portability replay still pending — promoted to Active. |
+| AC-8 | **PARTIAL** | Orchestrator MAX_ROUNDS/STUCK/saved-ref rollback present. Task-tag routing, in-band Codex review wiring, manifest-based rollback, and T1–T6 status parsing still pending — promoted to Active. |
+| AC-9 | **PARTIAL** | `CANONICAL_EXCLUSIONS.md` synced with `canonicalize_output.py`; whole reviewer block still canonically excluded (documented incomplete limitation); no clean-clone replay yet — both promoted to Active. |
+| AC-10 | **PARTIAL** | This document quotes evidence verbatim from current artifacts and contains no contradictions. AC-11 walkthrough Step 9 wording fixed in R2. PARTIAL until AC-5/AC-7/AC-8/AC-9 are no longer partial. |
+| AC-11 | **PARTIAL** | `pipeline/generate_round_walkthrough.py` wired into `pipeline/run_pipeline.sh` Step 11 with hard-fail-on-missing; accepts `--input-json` / `--output-json`; merges adjudications from `verdict.meta_review.adjudications` (run-local, primary) + canonical JSON (fallback only). R2 walkthrough shows R4 propagated blocker as `(REBUTTED, ADJ-005 → ...)`. PARTIAL pending Codex re-review. |
+| AC-12 | **PARTIAL** | `figures/Section1/generate_figures.R` produces all 7 figures as PNG (≥300 dpi) + PDF in `figures/Section1/output/`; missing-package and missing-artifact (with stale-file cleanup, R2 fix) both PASS. PARTIAL pending Codex re-review. |
 
-## Plan-critical work still to do (not optional deferrals)
+## Plan-critical work still active (promoted from Queued to Active per Codex R1 review)
 
-1. **AC-8 lifecycle completion**: implement `coding`/`analyze` task-tag routing inside
-   orchestrator Step 2 (currently a no-op `touch` flag); wire in-band Codex review into
-   Step 5 (currently external); replace broad `git clean -fd` rollback with a manifest
-   of files touched by the round; parse actual T1..T6 PASS/FAIL from evaluator output
-   rather than the synthetic count.
-2. **AC-9 clean-clone replay**: perform the replay in a separate worktree, canonicalize
-   both outputs, commit the byte-diff (expected: empty) as evidence.
-3. **AC-9 reviewer canonical tightening**: implement one of the two remediation paths in
-   `CANONICAL_EXCLUSIONS.md` so the whole reviewer block stops being a canonical blind
-   spot (either parsed-subtree inclusion or content-hash replacement).
-4. **AC-5 persona-prompt tightening**: require any persona reporting `blockers_count > 0`
-   to emit at least one structured critique with `severity="blocker"` and a real summary,
-   so the validator's count-vs-critique hard failure never triggers in practice on
-   well-formed reviewer output.
-5. **AC-7 portability**: separate-worktree replay confirming
-   `anti_bias_artifact_paths` (repo-root-relative) resolve correctly under any
-   checkout location.
+Codex R1 explicitly rejected treating these as queued side issues. They are now tracked
+as Active Tasks in `.humanize/rlcr/2026-05-27_19-19-06/goal-tracker.md`. Each is a
+dedicated future round.
+
+1. **AC-8 lifecycle completion**: orchestrator task-tag routing + in-band Codex review +
+   manifest-based rollback (replacing broad `git checkout -- .` + `git clean -fd`) +
+   T1–T6 PASS/FAIL parsing from evaluator output.
+2. **AC-9 reviewer canonical tightening**: deterministic parsed subtree OR
+   `reviewer_ensemble_verdict_sha256` to eliminate the whole-reviewer-block blind spot.
+3. **AC-9 clean-clone separate-worktree replay**: depends on (2). Run the pipeline in a
+   second worktree, canonicalize both outputs, commit the byte-diff (expected empty).
+4. **AC-7 portability**: bundled with (3) — confirm `anti_bias_artifact_paths`
+   repo-root-relative scheme resolves correctly under any checkout location.
+5. **AC-5 persona-prompt tightening**: rewrite all six reviewer persona prompts so
+   `blockers_count > 0` requires at least one structured `severity="blocker"` critique
+   with a non-placeholder summary, eliminating R3-type unbound contradictions at source.
 
 ## Cross-round artifact pointers
 
-- Latest output: `runs/round_8/output.json` (post-R11; `pre_registration_hash` = current tag SHA)
-- Latest reviewer verdict: `runs/round_8/reviewer_ensemble_verdict.json` (`status: ALL_SIX_INVOKED`, 1 adjudicated blocker)
-- Latest diagnostic: `diagnostics/round_8.md` (LOO PASS, lit-blinded PASS)
-- Anti-bias run-local artifacts: `runs/round_8/anti_bias/`
-- Round summaries: `.humanize/rlcr/2026-05-27_04-50-03/round-N-summary.md` (gitignored; local audit only)
-- Blocker adjudications: `pipeline/audits/reviewer_blocker_adjudications.md`
+- Latest output: `runs/round_8/output.json` (post-R2; `pre_registration_hash` = current tag SHA)
+- Latest reviewer verdict: `runs/round_8/reviewer_ensemble_verdict.json`
+  (`status`, `overall_status`, `blockers_remaining`, `meta_review.adjudications`,
+  `meta_review.unbound_blockers` all populated)
+- Latest diagnostic: `diagnostics/round_8.md`
+- Latest walkthrough: `runs/round_8/round_8_walkthrough.md` (auto-emitted by Step 11)
+- Section 1 figures: `figures/Section1/output/Fig{1..7}_*.{png,pdf}` (14 files)
+- Round summaries: `.humanize/rlcr/2026-05-27_19-19-06/round-N-summary.md`
+  (gitignored; local audit only)
+- Adjudications canonical: `pipeline/audits/reviewer_blocker_adjudications.json` (machine-readable, locked under audit_required)
+- Adjudications human-readable: `pipeline/audits/reviewer_blocker_adjudications.md`
