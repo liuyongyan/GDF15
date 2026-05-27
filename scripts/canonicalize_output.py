@@ -15,7 +15,7 @@ from pathlib import Path
 # Per AC-5, reviewer ensemble output is allowed to be non-deterministic (real LLM responses
 # vary across calls). For byte-comparable AC-9 reproducibility, the entire reviewer block is
 # excluded along with the runtime-only top-level fields below. See CANONICAL_EXCLUSIONS.md.
-EXCLUDE_TOPLEVEL = {"pre_registration_hash", "round", "reviewer_ensemble_verdict"}
+EXCLUDE_TOPLEVEL = {"pre_registration_hash", "round", "reviewer_ensemble_verdict", "anti_bias_artifact_paths"}
 
 
 def canonicalize(doc: dict) -> dict:

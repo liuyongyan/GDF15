@@ -46,8 +46,18 @@ echo ""
 echo "[run_pipeline] === Step 6: Run reviewer ensemble ==="
 SUMMARY_TXT="$RUN_DIR/pipeline_summary.txt"
 # Build an anonymized dossier for reviewers from the most-recent prior assembled output.
-python3 "$DIR/reviewers/build_reviewer_dossier.py" --round "$ROUND_NUMBER" --out "$SUMMARY_TXT" 2>/dev/null || \
-    echo "Pipeline summary input for reviewer ensemble (round $ROUND_NUMBER) — no prior assembled output yet" > "$SUMMARY_TXT"
+# Prefer most-recent-by-mtime prior output as source; reviewers critique whatever Pipeline produced last
+PRIOR_OUTPUT=""
+if [[ -d "$ROOT/runs" ]]; then
+    PRIOR_OUTPUT=$(find "$ROOT/runs" -maxdepth 2 -name output.json -type f 2>/dev/null | xargs -I{} stat -f "%m %N" {} 2>/dev/null | sort -n | tail -1 | awk '{print $2}')
+fi
+if [[ -n "$PRIOR_OUTPUT" ]]; then
+    python3 "$DIR/reviewers/build_reviewer_dossier.py" --round "$ROUND_NUMBER" --out "$SUMMARY_TXT" --source-output "$PRIOR_OUTPUT" 2>/dev/null || \
+        echo "Pipeline summary input for reviewer ensemble (round $ROUND_NUMBER) — fallback minimal" > "$SUMMARY_TXT"
+else
+    python3 "$DIR/reviewers/build_reviewer_dossier.py" --round "$ROUND_NUMBER" --out "$SUMMARY_TXT" 2>/dev/null || \
+        echo "Pipeline summary input for reviewer ensemble (round $ROUND_NUMBER) — no prior assembled output yet" > "$SUMMARY_TXT"
+fi
 bash "$DIR/reviewers/run_ensemble.sh" "$ROUND_NUMBER" "$SUMMARY_TXT" "$RUN_DIR"
 python3 "$DIR/reviewers/validate_ensemble_output.py" "$RUN_DIR/reviewer_ensemble_verdict.json"
 # Use phase=beta post-lock; phase=alpha pre-lock (per AC-5)

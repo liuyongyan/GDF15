@@ -237,7 +237,7 @@ PYEOF
 
 # Decide overall verdict
 if [[ $any_fail -eq 1 ]]; then
-    # Per-persona failure → REVIEWER_DEFERRED with explicit evidence
+    # Per-persona failure → REVIEWER_DEFERRED with explicit evidence + parsed-blocker aggregation
     fail_personas=()
     fail_backbones_set=()
     for i in "${!PERSONAS[@]}"; do
@@ -290,6 +290,28 @@ EOF
 import json, sys
 verdict_path, round_num, reason, fail_personas_json, per_persona_json = sys.argv[1:6]
 fail_personas = json.loads(f"[{fail_personas_json}]") if fail_personas_json.strip() else []
+per_persona = json.loads(per_persona_json)
+# Aggregate blockers even in deferred mode (Codex R6/R7 demand)
+total_blockers = 0
+blockers_remaining = []
+for p_name, p_body in per_persona.items():
+    if not isinstance(p_body, dict):
+        continue
+    bc = int(p_body.get("blockers_count", 0) or 0)
+    total_blockers += bc
+    for c in p_body.get("critiques", []) or []:
+        # Support dict and string critique entries; normalize severity case
+        if isinstance(c, dict):
+            sev = str(c.get("severity", "")).lower()
+            if sev == "blocker":
+                blockers_remaining.append({
+                    "persona": p_name,
+                    "summary": c.get("summary", ""),
+                    "severity": "blocker",
+                })
+        elif isinstance(c, str):
+            if "blocker" in c.lower():
+                blockers_remaining.append({"persona": p_name, "summary": c, "severity": "blocker"})
 doc = {
     "schema_version": "1.0",
     "round": int(round_num),
@@ -299,19 +321,24 @@ doc = {
     "affected_personas": fail_personas,
     "affected_backbones": ["codex", "gemini"],
     "remediation": "Set ANTHROPIC_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY for API billing, verify CLI auth, re-run run_ensemble.sh; cached personas are auto-skipped.",
-    "per_persona": json.loads(per_persona_json),
+    "per_persona": per_persona,
     "meta_review": {
-        "verdict": "deferred",
+        "verdict": "deferred_with_partial_blockers" if total_blockers > 0 else "deferred",
         "consensus_blockers": [],
-        "single_reviewer_blockers": [],
-        "pipeline_methodology_concerns": [f"{len(fail_personas)} persona(s) failed all backbones; see RATE_LIMITED.md"],
-        "cross_reviewer_agreement_summary": "Partial — some personas unavailable",
+        "single_reviewer_blockers": blockers_remaining,
+        "pipeline_methodology_concerns": [
+            f"{len(fail_personas)} persona(s) failed all backbones; see RATE_LIMITED.md",
+            f"Aggregated {total_blockers} parsed blocker(s) from personas that returned valid JSON",
+        ],
+        "cross_reviewer_agreement_summary": f"Partial — some personas unavailable; {total_blockers} parsed blockers preserved",
     },
-    "blockers_remaining": [],
+    "blockers_remaining": blockers_remaining,
 }
 with open(verdict_path, "w") as f:
     json.dump(doc, f, indent=2, sort_keys=True)
 PYEOF
+    # Redact forbidden names from reviewer prose BEFORE the verdict is consumed downstream
+    python3 "$REVIEWERS_DIR/redact_forbidden.py" "$VERDICT_JSON"
     echo "run_ensemble: REVIEWER_DEFERRED (some personas failed); see $OUTPUT_DIR/RATE_LIMITED.md"
     exit 0
 fi
@@ -339,14 +366,18 @@ for p_name, p_body in per_persona.items():
         for c in p_body.get("critiques", []) or []:
             if isinstance(c, dict) and c.get("severity") == "blocker":
                 blockers_remaining.append({"persona": p_name, "summary": c.get("summary", ""), "severity": "blocker"})
+verdict_label = "real_review_complete" if total_blockers == 0 else "blockers_present"
+overall_status_label = "PASS" if total_blockers == 0 else "BLOCKERS_PRESENT"
 doc = {
     "schema_version": "1.0",
     "round": int(round_num),
     "status": status_msg,
     "mode": mode,
+    "verdict": verdict_label,
+    "overall_status": overall_status_label,
     "per_persona": per_persona,
     "meta_review": {
-        "verdict": "real_review_complete" if total_blockers == 0 else "blockers_present",
+        "verdict": verdict_label,
         "consensus_blockers": [],
         "single_reviewer_blockers": blockers_remaining,
         "pipeline_methodology_concerns": [],
@@ -358,5 +389,7 @@ with open(verdict_path, "w") as f:
     json.dump(doc, f, indent=2, sort_keys=True)
 PYEOF
 
+# Redact forbidden names from reviewer prose BEFORE the verdict is consumed downstream
+python3 "$REVIEWERS_DIR/redact_forbidden.py" "$VERDICT_JSON"
 echo "run_ensemble: all six personas have output ($status_msg); wrote $VERDICT_JSON"
 exit 0

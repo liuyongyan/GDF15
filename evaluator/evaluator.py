@@ -158,9 +158,13 @@ def render_verbose_diagnostic(output_json: dict, expected: dict, thresholds: dic
         lines.append(f"### loo_ablation_target_stability")
         lines.append(f"- criterion: {cb.get('criterion')}")
         lines.append(f"- severity: {cb.get('severity')}")
-        # Read the per_dim_results from the raw _results_loo.json (loo in output is summarized)
+        # Read same-run LOO artifact: prefer output_json embedded path; fallback to scratch (legacy)
         try:
-            loo_raw_path = Path(__file__).resolve().parent.parent / "pipeline" / "anti_bias" / "_results_loo.json"
+            embedded_loo_path = output_json.get("anti_bias_artifact_paths", {}).get("loo")
+            if embedded_loo_path:
+                loo_raw_path = Path(embedded_loo_path)
+            else:
+                loo_raw_path = Path(__file__).resolve().parent.parent / "pipeline" / "anti_bias" / "_results_loo.json"
             if loo_raw_path.exists():
                 loo_raw = json.loads(loo_raw_path.read_text())
                 per_dim = loo_raw.get("per_dim_results", {})
@@ -184,14 +188,24 @@ def render_verbose_diagnostic(output_json: dict, expected: dict, thresholds: dic
         except Exception as e:
             lines.append(f"- result: UNKNOWN — error reading LOO results: {e}")
 
-    # 3d: permutation_test_top_target_significance
+    # 3d: permutation_test_top_target_significance — with explicit PASS/FAIL/UNKNOWN
     cb = target_checks.get("permutation_test_top_target_significance", {})
     if cb:
         pv = anti_bias.get("permutation_test_p_value")
+        # Parse threshold from criterion text "empirical p-value of top-ranked target < 0.001"
+        import re as _re
+        m = _re.search(r"<\s*([0-9.eE+-]+)", str(cb.get("criterion", "")))
+        thr = float(m.group(1)) if m else 0.001
+        if pv is None:
+            status_label = "UNKNOWN"
+        elif isinstance(pv, (int, float)) and pv < thr:
+            status_label = "PASS"
+        else:
+            status_label = "FAIL"
         lines.append(f"### permutation_test_top_target_significance")
         lines.append(f"- criterion: {cb.get('criterion')}")
         lines.append(f"- severity: {cb.get('severity')}")
-        lines.append(f"- result: empirical p-value = {pv}")
+        lines.append(f"- result: **{status_label}** — empirical p-value = {pv} vs threshold < {thr}")
 
     # 3e: literature_blinded_target_top_quartile — compute from _results_lit_blind.json
     cb = target_checks.get("literature_blinded_target_top_quartile", {})
@@ -200,7 +214,11 @@ def render_verbose_diagnostic(output_json: dict, expected: dict, thresholds: dic
         lines.append(f"- criterion: {cb.get('criterion')}")
         lines.append(f"- severity: {cb.get('severity')}")
         try:
-            lit_raw_path = Path(__file__).resolve().parent.parent / "pipeline" / "anti_bias" / "_results_lit_blind.json"
+            embedded_lit_path = output_json.get("anti_bias_artifact_paths", {}).get("lit_blind")
+            if embedded_lit_path:
+                lit_raw_path = Path(embedded_lit_path)
+            else:
+                lit_raw_path = Path(__file__).resolve().parent.parent / "pipeline" / "anti_bias" / "_results_lit_blind.json"
             if lit_raw_path.exists():
                 lit_raw = json.loads(lit_raw_path.read_text())
                 blinded_top25 = lit_raw.get("blinded_top25_ranking", [])

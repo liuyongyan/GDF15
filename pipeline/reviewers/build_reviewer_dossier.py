@@ -20,17 +20,26 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--round", type=int, required=True)
     parser.add_argument("--out", required=True)
+    parser.add_argument("--source-output", default=None,
+                        help="Explicit source output.json (overrides lex-last-runs heuristic).")
     args = parser.parse_args()
 
-    # Find the most recent prior output.json
-    runs_dir = PIPELINE_ROOT.parent / "runs"
-    candidates = []
-    if runs_dir.exists():
-        for d in sorted(runs_dir.iterdir()):
-            if d.name.startswith("round_") and (d / "output.json").exists():
-                candidates.append(d)
-    if not candidates:
-        # No prior output; emit minimal context
+    src = None
+    if args.source_output and Path(args.source_output).exists():
+        src = Path(args.source_output)
+    else:
+        # Fallback: most-recent-by-mtime (NOT lex-order) prior output.json
+        runs_dir = PIPELINE_ROOT.parent / "runs"
+        candidates = []
+        if runs_dir.exists():
+            for d in runs_dir.iterdir():
+                if d.name.startswith("round_") and (d / "output.json").exists():
+                    candidates.append(d / "output.json")
+        if candidates:
+            candidates.sort(key=lambda p: p.stat().st_mtime)
+            src = candidates[-1]
+
+    if src is None:
         Path(args.out).write_text(
             f"Round {args.round}: no prior assembled Pipeline output available; "
             f"reviewer dossier minimal. Please critique the pipeline methodology in the "
@@ -38,8 +47,6 @@ def main() -> int:
         )
         return 0
 
-    # Use the most recent output
-    src = candidates[-1] / "output.json"
     doc = json.loads(src.read_text())
     ranked = doc.get("ranked_targets", [])[:25]
     n_total = doc.get("ranked_targets_full_count", len(ranked))

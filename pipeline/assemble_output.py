@@ -180,6 +180,15 @@ def main() -> int:
         except json.JSONDecodeError:
             pass
 
+    # Provide same-run artifact paths so the evaluator reads from these, not scratch defaults
+    anti_bias_artifact_paths = {
+        "loo": str((anti_bias_dir / "_results_loo.json").resolve()),
+        "lit_blind": str((anti_bias_dir / "_results_lit_blind.json").resolve()),
+        "nc": str((anti_bias_dir / "_results_nc.json").resolve()),
+        "mr": str((anti_bias_dir / "_results_mr.json").resolve()),
+        "perm": str((anti_bias_dir / "_results_perm.json").resolve()),
+    }
+
     reviewer_verdict = json.loads(Path(args.reviewer_verdict).read_text())
 
     output = {
@@ -188,6 +197,7 @@ def main() -> int:
         "ranked_targets": enriched[:50],
         "ranked_targets_full_count": len(enriched),
         "anti_bias_validation": anti_bias,
+        "anti_bias_artifact_paths": anti_bias_artifact_paths,
         "reviewer_ensemble_verdict": reviewer_verdict,
         "pre_registration_hash": get_pre_registration_hash(),
         "reproducibility": "./pipeline/run_pipeline.sh sample_input.json sample_output.json",

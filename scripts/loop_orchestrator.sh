@@ -99,8 +99,11 @@ Decisions and proposed changes are recorded here before implementation.
 EOF
     fi
 
-    # STEP 2 — IMPLEMENT (no-op stub; real implementation happens in human/agent layer)
-    # The orchestrator records that an implementation slot exists for this round
+    # STEP 2 — IMPLEMENT
+    # The orchestrator records the start-of-round commit ref so STEP 7 rollback can restore safely
+    # (avoids broad `git reset --hard HEAD~1` which can destroy unrelated work).
+    START_OF_ROUND_REF=$(git rev-parse HEAD 2>/dev/null || echo "")
+    echo "$START_OF_ROUND_REF" > "$RUN_DIR/start_of_round_ref.txt"
     touch "$RUN_DIR/implementation_started.flag"
 
     # STEP 3 — RUN
@@ -149,10 +152,17 @@ EOF
     git add -A 2>/dev/null || true
     git commit -m "round $ROUND ($PHASE): orchestrator-driven checkpoint" --allow-empty 2>/dev/null || true
 
-    # Handle rollback
+    # Handle rollback — restore to saved start-of-round ref (NOT broad HEAD~1)
     if [[ "$DECISION" == "rollback" ]]; then
-        echo "loop_orchestrator: ROLLBACK requested in round $ROUND; rolling back to previous commit"
-        git reset --hard HEAD~1 2>/dev/null || true
+        START_REF=$(cat "$RUN_DIR/start_of_round_ref.txt" 2>/dev/null || echo "")
+        if [[ -n "$START_REF" ]] && git rev-parse "$START_REF" >/dev/null 2>&1; then
+            echo "loop_orchestrator: ROLLBACK requested in round $ROUND; restoring to $START_REF"
+            git reset --soft "$START_REF" 2>/dev/null || true
+            git checkout -- . 2>/dev/null || true
+            git clean -fd 2>/dev/null || true
+        else
+            echo "loop_orchestrator: ROLLBACK requested but no valid start_of_round_ref; refusing destructive HEAD~1 reset" >&2
+        fi
         # Don't count the rolled-back round toward improvement streak
         ROUND=$((ROUND + 1))
         continue
@@ -163,10 +173,34 @@ EOF
         break
     fi
 
-    # STEP 8 — Track T1..T6 pass count for stuck detection
+    # STEP 8 — Parse T1..T6 pass count from diagnostic JSON summary block (machine-readable)
     T_PASSES=0
     if [[ -f "$DIAG" ]]; then
-        T_PASSES=$(grep -E '^\- \*\*Lock tag present|^\- ✅' "$DIAG" 2>/dev/null | wc -l | tr -d ' ')
+        # Diagnostic ends with a ```json ... ``` summary block; parse it
+        T_PASSES=$(python3 - "$DIAG" <<'PYEOF' 2>/dev/null || echo 0
+import json, re, sys
+text = open(sys.argv[1]).read()
+m = re.search(r"```json\s*({[\s\S]*?})\s*```", text)
+if not m:
+    print(0); sys.exit(0)
+try:
+    summary = json.loads(m.group(1))
+except json.JSONDecodeError:
+    print(0); sys.exit(0)
+n_pass = 0
+if summary.get("expected_target_in_top_n"): n_pass += 1
+if summary.get("expected_target_rank") is not None: n_pass += 1
+if summary.get("lock_tag"): n_pass += 1
+if summary.get("pre_registration_hash") and not str(summary.get("pre_registration_hash")).endswith("_pre_lock"): n_pass += 1
+rs = summary.get("reviewer_status")
+if rs and rs not in {None, "REVIEWER_DEFERRED", "MOCK_STUB_FOR_ROUND_0"}: n_pass += 1
+if summary.get("n_ranked_total", 0) > 0: n_pass += 1
+print(n_pass)
+PYEOF
+)
+        # Strip whitespace
+        T_PASSES=$(echo "$T_PASSES" | tr -d '[:space:]')
+        T_PASSES=${T_PASSES:-0}
     fi
     T_PASS_COUNTS[$ROUND]=$T_PASSES
 

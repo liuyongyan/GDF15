@@ -77,6 +77,26 @@ def main(argv: list[str]) -> int:
             errors.append("'affected_backbones' must be a list")
         if doc.get("remediation") and not isinstance(doc["remediation"], str):
             errors.append("'remediation' must be a string")
+        # Codex R6/R7: enforce per-persona parsed-field structural honesty in deferred mode
+        per = doc.get("per_persona", {}) or {}
+        total_parsed_blockers = 0
+        for p_name, p_body in per.items():
+            if not isinstance(p_body, dict):
+                continue
+            if p_body.get("missing") or p_body.get("status") in {"BOTH_BACKBONES_FAILED", "MISSING_PROMPT"}:
+                continue
+            field_gap = REQUIRED_PER_PERSONA_FIELDS_REAL - set(p_body.keys())
+            if field_gap:
+                errors.append(f"deferred-mode persona {p_name} missing parsed fields: {sorted(field_gap)}")
+            try:
+                total_parsed_blockers += int(p_body.get("blockers_count", 0) or 0)
+            except (TypeError, ValueError):
+                pass
+        if total_parsed_blockers > 0 and not doc.get("blockers_remaining"):
+            errors.append(
+                f"deferred-mode verdict has {total_parsed_blockers} parsed blocker(s) across personas "
+                f"but top-level blockers_remaining is empty"
+            )
     elif "MOCK_STUB" not in mode:
         # Real-mode: require all six personas + per-persona structure with parsed evidence
         per = doc.get("per_persona", {})
