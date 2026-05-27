@@ -336,7 +336,7 @@ EOF
     per_persona_json=$(build_per_persona_json)
     python3 - "$VERDICT_JSON" "$ROUND_NUMBER" "$reason" "$fail_personas_json" "$per_persona_json" "$REVIEWERS_DIR" <<'PYEOF'
 import json, sys
-sys.path.insert(0, sys.argv[5])
+sys.path.insert(0, sys.argv[6])
 from blocker_normalization import normalize_blockers
 verdict_path, round_num, reason, fail_personas_json, per_persona_json, _reviewers_dir = sys.argv[1:7]
 fail_personas = json.loads(f"[{fail_personas_json}]") if fail_personas_json.strip() else []

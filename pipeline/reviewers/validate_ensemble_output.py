@@ -151,11 +151,13 @@ def main(argv: list[str]) -> int:
                 f"regular-mode verdict drops {len(missing_ids)} real blocker(s) not present "
                 f"in blockers_remaining (identity check): {sorted(missing_ids)[:3]}{'...' if len(missing_ids) > 3 else ''}"
             )
-        # Parsed-vs-propagated inconsistency surfaced as a soft warning (printed to stderr).
-        # This catches LLM self-contradictions (reports a count but provides no structured
-        # critique with severity=blocker and a real summary). The hard error remains
-        # "blockers_remaining drops real propagated blockers" enforced above.
-        warnings: list[str] = []
+        # Round 11 hardening: post-lock regular-mode rejects count-vs-critique
+        # contradictions UNLESS an explicit adjudication entry exists in
+        # meta_review.unbound_blockers[persona]. This stops the verdict from claiming
+        # blockers exist (count > 0) without either propagating them or recording why
+        # they should be ignored.
+        unbound = (doc.get("meta_review", {}) or {}).get("unbound_blockers", {}) or {}
+        is_post_lock = lock_tag_exists()
         for p_name, body in per.items():
             if not isinstance(body, dict):
                 continue
@@ -166,13 +168,19 @@ def main(argv: list[str]) -> int:
             if bc <= 0:
                 continue
             persona_real = [b for b in real_blockers if b["persona"] == p_name]
-            if not persona_real:
-                warnings.append(
-                    f"persona {p_name} reports blockers_count={bc} but no real blocker survived "
-                    f"normalization (placeholder summary or non-blocker severity); not propagated"
+            if persona_real:
+                continue
+            msg = (
+                f"persona {p_name} reports blockers_count={bc} but no real blocker survived "
+                f"normalization (placeholder summary or non-blocker severity)"
+            )
+            if is_post_lock and not isinstance(unbound.get(p_name), (dict, str)):
+                errors.append(
+                    msg + f"; post-lock requires an entry in meta_review.unbound_blockers[\"{p_name}\"] "
+                    f"explaining adjudication"
                 )
-        for w in warnings:
-            print(f"validate_ensemble_output: WARN - {w}", file=sys.stderr)
+            else:
+                print(f"validate_ensemble_output: WARN - {msg}", file=sys.stderr)
 
     if "meta_review" not in doc:
         errors.append("missing meta_review")

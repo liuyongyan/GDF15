@@ -61,6 +61,24 @@ validator did count-only enforcement; (c) the evaluator resolved embedded
 ## Evidence regenerated post-R10 code fixes
 - `runs/round_8/output.json`: `pre_registration_hash` now equals the current tag SHA.
   Reviewer evidence is honest (`overall_status=BLOCKERS_PRESENT` with 1 real blocker
-  identity-propagated; all six personas invoked LIVE this run, no cache hits).
+  identity-propagated; ~~all six personas invoked LIVE this run, no cache hits~~).
 - `diagnostics/round_8.md`: LOO target-specific check shows PASS (was UNKNOWN);
   lit-blinded target-specific check shows PASS (was UNKNOWN).
+
+## Correction (Round 11)
+The line "all six personas invoked LIVE this run, no cache hits" above is FACTUALLY WRONG
+and is struck through. Codex R10 review identified this contradiction:
+
+- The Round 10 close-out sequence regenerated the pipeline TWICE — first to capture the
+  new R10 code (live invocation), then a SECOND time AFTER the lock tag was moved to
+  the R10 commit (to refresh the embedded `pre_registration_hash`). The second
+  regeneration hit the populated reviewer cache for all six personas (same prompt+input
+  hash as the first live run), so the final `runs/round_8/reviewer_ensemble_verdict.json`
+  has `status: ALL_SIX_FROM_CACHE` and every per-persona `backbone_used: cache`.
+- The original R10 audit-note wording incorrectly claimed live invocation. The correct
+  description is: "Round 10 regenerated the verdict TWICE; the first regen was live
+  (`ALL_SIX_INVOKED`), the second regen post-tag-move was served entirely from the cache
+  populated by the first regen (`ALL_SIX_FROM_CACHE`). The final on-disk verdict reflects
+  the second (cached) regen."
+- Round 11 then cleared the cache and re-ran live so the final R11 evidence matches its
+  reported status (see `pipeline/audits/round_11_engineering_audit_note.md`).
