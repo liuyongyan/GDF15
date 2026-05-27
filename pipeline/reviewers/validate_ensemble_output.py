@@ -151,12 +151,11 @@ def main(argv: list[str]) -> int:
                 f"regular-mode verdict drops {len(missing_ids)} real blocker(s) not present "
                 f"in blockers_remaining (identity check): {sorted(missing_ids)[:3]}{'...' if len(missing_ids) > 3 else ''}"
             )
-        # Round 11 hardening: post-lock regular-mode rejects count-vs-critique
-        # contradictions UNLESS an explicit adjudication entry exists in
-        # meta_review.unbound_blockers[persona]. This stops the verdict from claiming
-        # blockers exist (count > 0) without either propagating them or recording why
-        # they should be ignored.
-        unbound = (doc.get("meta_review", {}) or {}).get("unbound_blockers", {}) or {}
+        # R3 hardening (AC-5 prompt invariant): count-vs-critique mismatch is now a
+        # HARD post-lock error with no unbound_blockers escape hatch. The persona prompts
+        # explicitly require `blockers_count` to equal the number of severity="blocker"
+        # critiques whose summary/detail meet schema requirements. Any contradiction is a
+        # reviewer-prompt-compliance violation, not a content-adjudication question.
         is_post_lock = lock_tag_exists()
         for p_name, body in per.items():
             if not isinstance(body, dict):
@@ -165,20 +164,18 @@ def main(argv: list[str]) -> int:
                 bc = int(body.get("blockers_count", 0) or 0)
             except (TypeError, ValueError):
                 continue
-            if bc <= 0:
-                continue
             persona_real = [b for b in real_blockers if b["persona"] == p_name]
-            if persona_real:
+            n_real = len(persona_real)
+            if bc == n_real:
                 continue
             msg = (
-                f"persona {p_name} reports blockers_count={bc} but no real blocker survived "
-                f"normalization (placeholder summary or non-blocker severity)"
+                f"persona {p_name} count-vs-critique mismatch: blockers_count={bc} "
+                f"but normalize_blockers extracted {n_real} structured blocker(s); "
+                f"prompt invariant requires equality (see persona prompt's "
+                f"'Blocker Emission Invariant' section)"
             )
-            if is_post_lock and not isinstance(unbound.get(p_name), (dict, str)):
-                errors.append(
-                    msg + f"; post-lock requires an entry in meta_review.unbound_blockers[\"{p_name}\"] "
-                    f"explaining adjudication"
-                )
+            if is_post_lock:
+                errors.append(msg)
             else:
                 print(f"validate_ensemble_output: WARN - {msg}", file=sys.stderr)
 

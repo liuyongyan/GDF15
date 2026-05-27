@@ -132,7 +132,7 @@ output_json <- read_json_safe(file.path(run_dir, "output.json"))
 verdict <- read_json_safe(file.path(run_dir, "reviewer_ensemble_verdict.json"))
 val_summary <- read_json_safe(file.path(run_dir, "anti_bias", "_validation_summary.json"))
 platform_tsv <- read_tsv_safe(file.path(run_dir, "platform_compatibility_top25.tsv"))
-adj_json <- read_json_safe(file.path(repo_root, "pipeline", "audits", "reviewer_blocker_adjudications.json"))
+# R3 fix: Fig 6 reads adjudications from run-local verdict ONLY (no sidecar JSON).
 
 # ============================================================
 # Fig 1 — Pipeline architecture overview (target-blind DAG)
@@ -312,10 +312,14 @@ if (is.null(verdict)) {
     )
   }))
   propagated <- length(verdict$blockers_remaining %||% list())
-  # Adjudications across BOTH the verdict and canonical JSON
+  # R3 fix: Fig 6 counts adjudications from the run-local verdict only.
+  # Unique by non-empty adjudication_id to avoid double-counting if multiple
+  # canonical entries happen to bind to the same propagated blocker.
   v_adj <- verdict$meta_review$adjudications %||% list()
-  j_adj <- if (!is.null(adj_json)) adj_json$adjudications else list()
-  n_adj_total <- length(v_adj) + length(j_adj)
+  v_adj_ids <- unique(unlist(lapply(v_adj, function(a) {
+    if (is.list(a) && !is.null(a$adjudication_id) && nzchar(a$adjudication_id)) a$adjudication_id else NULL
+  })))
+  n_adj_total <- length(v_adj_ids)
   p6 <- ggplot(rev_df, aes(x = persona, y = blockers_count, fill = backbone)) +
     geom_col(width = 0.6) +
     geom_text(aes(label = blockers_count), vjust = -0.3, size = 4) +

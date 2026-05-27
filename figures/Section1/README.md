@@ -15,7 +15,7 @@ Publication-grade figures for Section 1 of the Cell manuscript, generated from
 | `Fig3_per_dim_heatmap.png` / `.pdf` | Per-dimension z-scores for the anonymized top-25 | `runs/round_N/output.json.ranked_targets[].per_dimension_scores` |
 | `Fig4_composite_ranking.png` / `.pdf` | Composite z-score bar chart for the anonymized top-25 | `runs/round_N/output.json.ranked_targets[].composite_score` |
 | `Fig5_anti_bias_gauntlet.png` / `.pdf` | Per-mechanism PASS / FAIL / SKIPPED panel + actual vs threshold | `runs/round_N/anti_bias/_validation_summary.json` |
-| `Fig6_reviewer_ensemble.png` / `.pdf` | Per-persona blocker counts + backbone-used + propagated/adjudicated counts | `runs/round_N/reviewer_ensemble_verdict.json` + `pipeline/audits/reviewer_blocker_adjudications.json` |
+| `Fig6_reviewer_ensemble.png` / `.pdf` | Per-persona blocker counts + backbone-used + propagated/adjudicated counts | `runs/round_N/reviewer_ensemble_verdict.json` (run-local; reads `verdict.meta_review.adjudications` only — no sidecar) |
 | `Fig7_post_hoc_platform.png` / `.pdf` | Post-hoc platform compatibility status distribution | `runs/round_N/platform_compatibility_top25.tsv` |
 
 ## How to regenerate
