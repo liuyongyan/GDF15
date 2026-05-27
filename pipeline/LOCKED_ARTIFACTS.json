@@ -10,7 +10,7 @@
       "mutability": "forbidden",
       "path": "evaluator/evaluator.py",
       "purpose": "External evaluator (mode-gated)",
-      "sha256": "e3af98c158627d24e6ebc0280ded4e086ee16dcf58c584fe8dcd84b8b7d610b4"
+      "sha256": "b8f0d9b5d5a4d0e5e215a22fd8be9d9f5118c965000c15b7e8ea3193d74a3e7a"
     },
     {
       "mutability": "forbidden",

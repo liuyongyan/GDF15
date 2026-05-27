@@ -41,7 +41,7 @@ def lock_tag_exists() -> bool:
         return False
 
 
-def render_verbose_diagnostic(output_json: dict, expected: dict, thresholds: dict) -> str:
+def render_verbose_diagnostic(output_json: dict, expected: dict, thresholds: dict, input_path: Path | None = None) -> str:
     expected_targets = expected.get("expected_top_targets", [])
     expected_ensembl = set(expected.get("expected_ensembl_ids", []))
     top_n_threshold = expected.get("expected_top_rank_threshold", 5)
@@ -229,9 +229,8 @@ def render_verbose_diagnostic(output_json: dict, expected: dict, thresholds: dic
         lines.append(f"- severity: {cb.get('severity')}")
         # Read the platform_compatibility TSV from the SAME round directory as the input JSON
         import csv as _csv
-        input_path = Path(args.input).resolve()
         # The TSV is alongside the input output.json in runs/round_N/
-        platform_tsv = input_path.parent / "platform_compatibility_top25.tsv"
+        platform_tsv = (input_path.parent / "platform_compatibility_top25.tsv") if input_path else None
         if not platform_tsv.exists():
             platform_tsv = None
         target_platform_result = None
@@ -374,7 +373,7 @@ def main() -> int:
     thresholds = json.loads((EVALUATOR_DIR / "expected_thresholds.json").read_text())
     output_json = json.loads(Path(args.input).read_text())
 
-    diagnostic = render_verbose_diagnostic(output_json, expected, thresholds)
+    diagnostic = render_verbose_diagnostic(output_json, expected, thresholds, Path(args.input).resolve())
     Path(args.output).write_text(diagnostic)
     print(f"evaluator: wrote verbose diagnostic to {args.output}")
     return 0
