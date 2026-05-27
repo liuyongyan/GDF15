@@ -77,6 +77,10 @@ def main() -> int:
                     help="Override run directory (default: runs/round_<round>)")
     ap.add_argument("--out", default=None,
                     help="Override output path (default: <run-dir>/round_<round>_walkthrough.md)")
+    ap.add_argument("--input-json", default=None,
+                    help="Actual input JSON path used by this pipeline invocation (reported in Step 1)")
+    ap.add_argument("--output-json", default=None,
+                    help="Actual output JSON path used by this pipeline invocation (read for results; reported in Step 7)")
     args = ap.parse_args()
 
     run_dir = Path(args.run_dir) if args.run_dir else REPO_ROOT / "runs" / f"round_{args.round}"
@@ -85,8 +89,17 @@ def main() -> int:
         return 1
     out_path = Path(args.out) if args.out else run_dir / f"round_{args.round}_walkthrough.md"
 
-    output = _read_json(run_dir / "output.json")
+    # Resolve actual invocation paths. Fall back to defaults only when omitted.
+    input_json_path = Path(args.input_json) if args.input_json else (REPO_ROOT / "sample_input.json")
+    output_json_path = Path(args.output_json) if args.output_json else (run_dir / "output.json")
+
+    output = _read_json(output_json_path)
     verdict = _read_json(run_dir / "reviewer_ensemble_verdict.json")
+    # AC-11 fix (R1): adjudications come from BOTH the verdict's meta_review.adjudications
+    # AND the canonical pipeline/audits/reviewer_blocker_adjudications.json file, merged by hash.
+    # The JSON file is the source of truth because reviewer-verdict regeneration loses
+    # injected adjudications, while the audit JSON is preserved across rounds.
+    adjudications_json = _read_json(REPO_ROOT / "pipeline" / "audits" / "reviewer_blocker_adjudications.json")
     summary_txt = _read_text(run_dir / "pipeline_summary.txt")
     diagnostic_md = _read_text(REPO_ROOT / "diagnostics" / f"round_{args.round}.md")
 
@@ -133,10 +146,15 @@ def main() -> int:
             lines.append("")
 
     # Step 1 — Input validation
+    try:
+        input_rel = input_json_path.relative_to(REPO_ROOT)
+        input_display = str(input_rel)
+    except ValueError:
+        input_display = str(input_json_path)
     lines.extend(_section("Step 1 — Input validation", _what_why_results(
-        what="Ran `python3 pipeline/validate_input.py sample_input.json` to verify the input JSON conforms to draft §3.1's schema (required fields, indication, top-N target).",
+        what=f"Ran `python3 pipeline/validate_input.py {input_display}` to verify the input JSON conforms to draft §3.1's schema (required fields, indication, top-N target).",
         why="The pipeline's IO contract (AC-2) requires strict schema validation before any downstream computation, so malformed input fails fast with a clear error rather than producing corrupted ranking output.",
-        results=[f"- PASS (pipeline reached subsequent steps; input file `sample_input.json` accepted)."],
+        results=[f"- PASS (pipeline reached subsequent steps; input file `{input_display}` accepted)."],
     )))
 
     # Step 2 — Universe
@@ -230,18 +248,42 @@ def main() -> int:
                 f"prompt_hash=`{(body.get('prompt_hash','') or '')[:8]}…`"
             )
         propagated = verdict.get("blockers_remaining", []) or []
-        adjudications = verdict.get("meta_review", {}).get("adjudications", []) or []
-        rv_results.append(f"- Propagated blockers: **{len(propagated)}**; recorded adjudications: **{len(adjudications)}**")
+        # Merge adjudications from verdict + canonical JSON file (dedupe by hash, prefer JSON)
+        verdict_adj = verdict.get("meta_review", {}).get("adjudications", []) or []
+        json_adj = (adjudications_json or {}).get("adjudications", []) or []
+        adj_by_hash: dict = {}
+        for a in verdict_adj:
+            if isinstance(a, dict) and a.get("blocker_summary_hash"):
+                adj_by_hash[a["blocker_summary_hash"]] = a
+        for a in json_adj:
+            if isinstance(a, dict) and a.get("blocker_summary_hash"):
+                adj_by_hash[a["blocker_summary_hash"]] = a  # canonical JSON wins
+        # Also index by (persona, round) for hashless adjudications (e.g., ADJ-001)
+        adj_by_persona_round: dict = {}
+        for a in json_adj:
+            if isinstance(a, dict) and not a.get("blocker_summary_hash"):
+                key = (a.get("persona"), a.get("round"))
+                adj_by_persona_round[key] = a
+        rv_results.append(
+            f"- Propagated blockers: **{len(propagated)}**; "
+            f"recorded adjudications (verdict={len(verdict_adj)}, "
+            f"canonical JSON={len(json_adj)}, merged unique by hash={len(adj_by_hash)})."
+        )
         if propagated:
             rv_results.append("- Propagated blocker excerpts (truncated to 200 chars) + adjudication status:")
-            adj_by_hash = {a.get("blocker_summary_hash"): a for a in adjudications if isinstance(a, dict)}
             for b in propagated:
                 persona = b.get("persona", "?")
                 summary = b.get("summary", "")[:200]
                 sh = b.get("summary_hash", "")
-                adj = adj_by_hash.get(sh)
-                disposition = adj.get("disposition", "UNADJUDICATED") if adj else "UNADJUDICATED"
-                rv_results.append(f"  - `{persona}` ({disposition}): {summary}{'…' if len(b.get('summary', '')) > 200 else ''}")
+                adj = adj_by_hash.get(sh) or adj_by_persona_round.get((persona, args.round))
+                if adj:
+                    disposition = adj.get("disposition", "UNADJUDICATED")
+                    adj_id = adj.get("adjudication_id", "")
+                    rationale = adj.get("rationale_pointer", "")
+                    status_str = f"{disposition}, {adj_id} → {rationale}" if adj_id else disposition
+                else:
+                    status_str = "UNADJUDICATED"
+                rv_results.append(f"  - `{persona}` ({status_str}): {summary}{'…' if len(b.get('summary', '')) > 200 else ''}")
     else:
         rv_results.extend(_missing(f"runs/round_{args.round}/reviewer_ensemble_verdict.json"))
     lines.extend(_section("Step 6 — Six-persona reviewer ensemble", _what_why_results(
@@ -251,9 +293,14 @@ def main() -> int:
     )))
 
     # Step 7 — Assemble output JSON
+    try:
+        out_rel = output_json_path.relative_to(REPO_ROOT)
+        out_display = str(out_rel)
+    except ValueError:
+        out_display = str(output_json_path)
     s7_results: list[str] = []
     if output:
-        s7_results.append(f"- Wrote `runs/round_{args.round}/output.json` ({output.get('ranked_targets_full_count','?')} candidates; top 50 emitted).")
+        s7_results.append(f"- Wrote `{out_display}` ({output.get('ranked_targets_full_count','?')} candidates; top 50 emitted).")
         ranked = output.get("ranked_targets", []) or []
         if ranked:
             s7_results.append("- Top-5 ranking:")
@@ -268,9 +315,9 @@ def main() -> int:
             for dim, score in sorted(per_dim.items()):
                 s7_results.append(f"  - `{dim}`: {score:+.3f}")
     else:
-        s7_results.extend(_missing(f"runs/round_{args.round}/output.json"))
+        s7_results.extend(_missing(out_display))
     lines.extend(_section("Step 7 — Assemble pipeline output JSON", _what_why_results(
-        what="Ran `python3 pipeline/assemble_output.py` to compose the §3.1 IO-contract-compliant output JSON from per-dim scores, anti-bias rollup, reviewer verdict, weights, and the current methodology lock SHA.",
+        what=f"Ran `python3 pipeline/assemble_output.py --output {out_display}` to compose the §3.1 IO-contract-compliant output JSON from per-dim scores, anti-bias rollup, reviewer verdict, weights, and the current methodology lock SHA.",
         why="AC-2 requires a single canonical output JSON conforming to draft §3.1 (ranked targets, anti-bias validation, reviewer verdict, pre-registration hash). Centralizing assembly in one script keeps the IO contract enforceable.",
         results=s7_results,
     )))

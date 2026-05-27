@@ -88,7 +88,12 @@ bash "$ROOT/scripts/verify_methodology_lock.sh"
 echo ""
 echo "[run_pipeline] === Step 11: Generate round walkthrough (AC-11) ==="
 WALKTHROUGH="$RUN_DIR/round_${ROUND_NUMBER}_walkthrough.md"
-python3 "$DIR/generate_round_walkthrough.py" --round "$ROUND_NUMBER" --run-dir "$RUN_DIR" --out "$WALKTHROUGH"
+python3 "$DIR/generate_round_walkthrough.py" \
+    --round "$ROUND_NUMBER" \
+    --run-dir "$RUN_DIR" \
+    --out "$WALKTHROUGH" \
+    --input-json "$INPUT_JSON" \
+    --output-json "$OUTPUT_JSON"
 if [[ ! -s "$WALKTHROUGH" ]]; then
     echo "[run_pipeline] ERROR: walkthrough missing or empty after Steps 1-10 succeeded: $WALKTHROUGH" >&2
     exit 1

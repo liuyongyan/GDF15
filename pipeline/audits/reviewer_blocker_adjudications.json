@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "purpose": "Machine-readable canonical source for reviewer-blocker adjudications. Companion to pipeline/audits/reviewer_blocker_adjudications.md. Consumed by pipeline/generate_round_walkthrough.py to populate adjudication status for propagated blockers. The walkthrough generator merges adjudications from this file AND from verdict.meta_review.adjudications, deduping by blocker_summary_hash.",
+  "adjudications": [
+    {
+      "adjudication_id": "ADJ-001",
+      "round": 8,
+      "persona": "R2_clinical_translator",
+      "blocker_summary_hash": null,
+      "blocker_summary_excerpt": "Highly likely to be redundant with current standard of care given the profoundly favorable composite z-score and high D2 clinical signal. Without a clear differentiation analysis vs. incretin-class agents for the obesity+T2D+MASH indication, the candidate is a likely 'me-too' position.",
+      "disposition": "REBUTTED",
+      "rationale_pointer": "pipeline/audits/reviewer_blocker_adjudications.md#ADJ-001",
+      "summary": "Out-of-scope clinical positioning per plan.md §1.2; pipeline ranks target-agnostically, downstream class-vs-comparator analysis is a separate workstream. R2 critique was raised in R10 cached verdict.",
+      "action_taken": "N/A (no methodology change; concern acknowledged but out-of-scope for AC-5 acceptance)",
+      "adjudicated_in_round": 11,
+      "notes": "blocker_summary_hash is null because R10's R2 blocker text was lost when cache was cleared in R11; the adjudication is preserved by persona+round binding for audit trail. Future R2 blockers with the same intent should reference ADJ-001."
+    },
+    {
+      "adjudication_id": "ADJ-002",
+      "round": 8,
+      "persona": "R4_pharmacologist",
+      "blocker_summary_hash": "1e70f8466ac4753e",
+      "blocker_summary_excerpt": "Pharmacological blocker for an expression or secreted-protein modality. Despite excellent genetic, clinical, and literature scores, D5 secretion/modulatability is negative and D6 mechanism differentiation is strongly negative. Because D8 platform deliverability was excluded from the composite, this candidate may be ranked highly while being incompatible with the proposed modality.",
+      "disposition": "REBUTTED",
+      "rationale_pointer": "pipeline/audits/reviewer_blocker_adjudications.md#ADJ-002",
+      "summary": "By-design D8 exclusion + post-hoc platform check at run_pipeline.sh Step 8 already mitigates. Current platform_compatibility_top25.tsv shows candidate_001 PASS so the hypothesized modality mismatch is not realized at the post-hoc gate.",
+      "action_taken": "N/A (no methodology change; concern describes intentional pipeline architecture)",
+      "adjudicated_in_round": 11
+    }
+  ]
+}
