@@ -41,23 +41,27 @@ python3 cascade.py --indication t2d                # T2D shortlist
 python3 cascade.py --indication mash               # MASH shortlist
 ```
 
-Expected cascade chain by indication scope (with current snapshots):
+Expected cascade chain by indication scope (with current snapshots).
+L1-L5 are boolean gates (filter); L6 is the opportunity ranker applied
+to the L5 admissible set.
 
-| Indication | L1 | L2 | L3 | L5 | L6 | GDF15 rank |
+| Indication | L1 | L2 | L3 | L4 | L5 | GDF15 L6 rank |
 |---|---|---|---|---|---|---|
-| `metabolic` (broadest) | 1921 | 852 | 239 | 239 | 219 | #26 |
-| `obesity` (this paper) | 1921 | 426 | 128 | 128 | **112** | **#10** |
+| `metabolic` (broadest) | 1921 | 852 | 239 | 239 | 219 | #26 of 219 |
+| `obesity` (this paper) | 1921 | 426 | 128 | 128 | **112** | **#10 of 112** |
 | `t2d` | 1921 | 460 | 139 | 139 | 121 | — |
 | `mash` | 1921 | 277 | 93 | 93 | 83 | — |
 
-The six layers are: L1 modality compatibility, L2 disease evidence
-(indication-parameterized), L3 druggability (signaling classes only),
-L4 opportunity index (ranking, also indication-parameterized — not a
-filter), L5 historical safety audit (vacuous for our modality —
-itself a finding), L6 expert deliverability curation (catches short
-half-life, prohormone processing, obligate heterodimer, and UniProt
-misclassification — failure modes not captured by L1's coarse structural
-check).
+The six layers in execution order:
+
+| Layer | Role | What it does |
+|---|---|---|
+| L1 | gate | Modality compatibility (secreted + ORF size) |
+| L2 | gate | Disease evidence (indication-parameterized) |
+| L3 | gate | Druggability (5 signaling secreted-protein classes only) |
+| L4 | gate | Historical safety audit (vacuous for this modality — itself a finding) |
+| L5 | gate | Expert deliverability curation (4 saRNA-specific failure modes: short half-life, prohormone processing, obligate heterodimer, UniProt misclassification) |
+| L6 | rank | Opportunity index = evidence / (1 + max_clinical_phase), indication-scoped |
 
 ## What is not in this repo
 
