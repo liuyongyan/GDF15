@@ -792,3 +792,92 @@ A single `FINAL_RESULT.md` summarizing:
 If termination was not reached: a `STUCK.md` describing what is still failing and what the user should change in the spec or environment to unblock the loop.
 
 --- Original Design Draft End ---
+
+---
+
+<!-- ============================================================ -->
+<!-- PENDING REQUIREMENTS (user note, 2026-05-28)                -->
+<!-- Status: NOTE ONLY — not yet promoted to an AC; tag NOT moved -->
+<!-- Lock state: this addition changes plan.md's SHA256, so       -->
+<!-- `bash scripts/verify_methodology_lock.sh` will FAIL until    -->
+<!-- either (a) a future round promotes these to AC-13/AC-14 and  -->
+<!-- moves the tag, or (b) this section is removed.               -->
+<!-- ============================================================ -->
+
+## Pending Requirements (2026-05-28, user-added; not yet AC)
+
+The user reviewed the R3 close-out state and added two requirements about the
+bootstrap data-source layer. These are recorded here as **NOTE** so they survive
+across rounds but are NOT yet promoted to acceptance criteria. A future round
+should incorporate them as AC-13 + AC-14 (or fold into AC-3 if the user prefers)
+following the R12 plan-evolution protocol.
+
+### PENDING-1 — Synthetic-gene cap reduced from ~500 to ≤200
+
+Background: `pipeline/data_sources/augment_snapshots.py` currently inserts
+~501 synthetic protein-coding gene entries into each of the five snapshot TSVs
+(`opentargets`, `gwas_catalog`, `chembl`, `literature`, `uniprot`) to lift the
+universe past AC-3's 500-gene lower bound. The user judges 500 as too aggressive
+for a bootstrap subset.
+
+**Requirement**: cap synthetic entries at **≤200**. If after this cap the
+universe drops below the AC-3 lower bound of 200 genes, the round must report
+the gap honestly rather than auto-augment further. The fix path is to swap in a
+real Open Targets / GWAS Catalog / ChEMBL dump (commands in
+`pipeline/data_sources/MANIFEST.md`), not to inflate `augment_snapshots.py`.
+
+**Implications**:
+- `pipeline/data_sources/augment_snapshots.py`'s `ADDITIONAL_GENES` list must
+  shrink from ~501 → ≤200.
+- Universe size will drop from 696 → roughly 200–400 depending on overlap.
+- LOO / permutation statistical power will tighten; anti-bias soft thresholds
+  may need recalibration (a Phase α activity, requires methodology re-lock).
+- AC-3 diversity check (≥3 protein classes >5%) must still pass.
+
+### PENDING-2 — Synthetic entries must NOT be mixed into the real-source TSVs
+
+Background: today the augmenter writes synthetic rows directly into the same
+TSV files that hold real Open Targets / ChEMBL / GWAS / PubMed / UniProt
+records. Real and synthetic are interleaved and structurally indistinguishable
+(synthetic uses `ENSG` + 11 random digits, same shape as real Ensembl IDs).
+This makes it impossible to audit "which entries came from real public sources
+vs which were generated".
+
+**Requirement**: real and synthetic data must live in **separate files**.
+Concretely:
+- `pipeline/data_sources/snapshots/*.tsv` contains ONLY data sourced from
+  public databases (Open Targets, GWAS Catalog, ChEMBL, PubMed, UniProt). Each
+  row must have a real Ensembl gene ID (regex `^ENSG[0-9]{11}$` mapping to a
+  real human gene) and an MD5 footer linking to its public-source provenance.
+- `pipeline/data_sources/synthetic/*.tsv` is a new directory containing the
+  synthetic augmentation rows produced by `augment_snapshots.py`. Each row
+  must carry a synthetic Ensembl ID with a distinct prefix (e.g.,
+  `ENSGSYN0000NNNNNN`) so it cannot be mistaken for a real Ensembl ID.
+- `pipeline/universe/build_universe.py` reads BOTH directories during R1–R4
+  union but the universe TSV records `source_layer ∈ {"real", "synthetic"}`
+  per gene so every downstream consumer (scorers, anti-bias, reviewer dossier,
+  walkthrough, figures) can filter, weight, or report on the split.
+
+**Implications**:
+- AC-2 negative-test surface widens: a separate test verifies no
+  synthetic-prefix Ensembl ID appears in the real-source `snapshots/` dir,
+  and no real Ensembl ID appears in `synthetic/`.
+- Existing `pipeline/data_sources/snapshots/*.tsv` files must be split before
+  the next universe rebuild (a one-time migration script).
+- Reviewer dossier (AC-5) and walkthrough (AC-11) should surface the
+  real-vs-synthetic split per round so reviewers know the bootstrap fraction.
+
+### How a future round should handle these
+
+1. Treat as a Phase α / methodology-level change (touches universe construction
+   semantics). Either:
+   - Add as **AC-13 (PENDING-1)** + **AC-14 (PENDING-2)** with positive +
+     negative tests like the existing ACs, following R12's plan-evolution
+     protocol; OR
+   - Fold into an expanded **AC-3** with an `AC-3.1 / AC-3.2` sub-structure.
+2. Implement the migration: split TSVs, edit `augment_snapshots.py`, edit
+   `build_universe.py`, update `MANIFEST.md`.
+3. Recalibrate `pipeline/anti_bias/thresholds.json` if statistical power
+   shifts materially (Phase α activity per AC-1).
+4. Write the R-engineering-audit-note documenting the change and re-lock tag
+   to the close-out commit.

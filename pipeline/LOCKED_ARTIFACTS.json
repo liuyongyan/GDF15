@@ -262,7 +262,7 @@
       "mutability": "forbidden",
       "path": "plan.md",
       "purpose": "Implementation plan with locked AC",
-      "sha256": "9244a11a9456720116976b7062b8a89e61acbdbab08bf07c6bbf335b84c607a4"
+      "sha256": "199200ae1150ebc22b7706ee7a2ac6d35ba53e5a211094b8f8f926d73973031f"
     },
     {
       "mutability": "audit_required",
@@ -275,12 +275,6 @@
       "path": "scripts/canonicalize_output.py",
       "purpose": "Reproducibility canonicalizer",
       "sha256": "ea5d719c93c99dea1315ea250eb7bbd893fbd682dd6ae3ce51309975482b6d07"
-    },
-    {
-      "mutability": "audit_required",
-      "path": "scripts/loop_orchestrator.sh",
-      "purpose": "Round-lifecycle orchestrator",
-      "sha256": "b2a82c3bad5ac1c3b28d6722ce167153be479131ae4bef839d9890159b2ebed4"
     },
     {
       "mutability": "audit_required",
@@ -338,6 +332,6 @@
     }
   ],
   "lock_tag": "v1.0-methodology-locked",
-  "note": "This manifest is the SHA256-pinned methodology contract at lock time. Artifacts marked 'forbidden' must NEVER change in Phase \u03b2. Artifacts marked 'audit_required' may change in Phase \u03b2 only with a documented engineering_audit_note.md endorsed by Codex (per AC-1.2). Verify with scripts/verify_methodology_lock.sh.\n\nRound 8 re-lock (2026-05-27): refreshed hashes after AC-5/AC-7/AC-8/AC-9 fixes; see pipeline/audits/round_8_engineering_audit_note.md\n\nRound 9 re-lock (2026-05-27): refreshed hashes after AC-5/AC-7/AC-9 fixes; see pipeline/audits/round_9_engineering_audit_note.md\n\nRound 10 re-lock (2026-05-27): schema-robust normalizer, identity-check validator, evaluator path-resolution fix; see pipeline/audits/round_10_engineering_audit_note.md\n\nRound 11 re-lock (2026-05-27): validator hardened to fail post-lock on count-vs-critique contradictions; deferred-mode heredoc import bug fixed; see pipeline/audits/round_11_engineering_audit_note.md\n\nRound 12 (plan evolution, 2026-05-27): added AC-11 (round walkthrough) and AC-12 (R publication-grade figures) to plan.md; deleted 7 legacy ASCII figure sketches; see pipeline/audits/round_12_plan_evolution_audit_note.md\n\nNew RLCR session R0 (2026-05-27): added pipeline/generate_round_walkthrough.py (forbidden) implementing AC-11; refreshed pipeline/run_pipeline.sh (audit_required); see pipeline/audits/new_session_round_0_engineering_audit_note.md\n\nRound 1 (new session, 2026-05-27): AC-11 walkthrough generator now accepts --input-json/--output-json and merges adjudications from canonical JSON file; AC-12 R figure generator and 14 output files added (not in LOCKED, presentation layer); see pipeline/audits/round_1_engineering_audit_note.md\n\nRound 2 (new session, 2026-05-27): added adjudication_binding.py (forbidden) and reviewer_blocker_adjudications.json (audit_required); validator now enforces run-local adjudication binding; figure generator now unlinks stale PNG/PDF on skip; see pipeline/audits/round_2_engineering_audit_note.md\n\nRound 3 (new session, 2026-05-27): AC-5 prompt invariant tightening (6 prompts) + validator hard-fail on count-vs-critique mismatch + Fig 6 verdict-only fix; see pipeline/audits/round_3_engineering_audit_note.md",
+  "note": "This manifest is the SHA256-pinned methodology contract at lock time. Artifacts marked 'forbidden' must NEVER change in Phase \u03b2. Artifacts marked 'audit_required' may change in Phase \u03b2 only with a documented engineering_audit_note.md endorsed by Codex (per AC-1.2). Verify with scripts/verify_methodology_lock.sh.\n\nRound 8 re-lock (2026-05-27): refreshed hashes after AC-5/AC-7/AC-8/AC-9 fixes; see pipeline/audits/round_8_engineering_audit_note.md\n\nRound 9 re-lock (2026-05-27): refreshed hashes after AC-5/AC-7/AC-9 fixes; see pipeline/audits/round_9_engineering_audit_note.md\n\nRound 10 re-lock (2026-05-27): schema-robust normalizer, identity-check validator, evaluator path-resolution fix; see pipeline/audits/round_10_engineering_audit_note.md\n\nRound 11 re-lock (2026-05-27): validator hardened to fail post-lock on count-vs-critique contradictions; deferred-mode heredoc import bug fixed; see pipeline/audits/round_11_engineering_audit_note.md\n\nRound 12 (plan evolution, 2026-05-27): added AC-11 (round walkthrough) and AC-12 (R publication-grade figures) to plan.md; deleted 7 legacy ASCII figure sketches; see pipeline/audits/round_12_plan_evolution_audit_note.md\n\nNew RLCR session R0 (2026-05-27): added pipeline/generate_round_walkthrough.py (forbidden) implementing AC-11; refreshed pipeline/run_pipeline.sh (audit_required); see pipeline/audits/new_session_round_0_engineering_audit_note.md\n\nRound 1 (new session, 2026-05-27): AC-11 walkthrough generator now accepts --input-json/--output-json and merges adjudications from canonical JSON file; AC-12 R figure generator and 14 output files added (not in LOCKED, presentation layer); see pipeline/audits/round_1_engineering_audit_note.md\n\nRound 2 (new session, 2026-05-27): added adjudication_binding.py (forbidden) and reviewer_blocker_adjudications.json (audit_required); validator now enforces run-local adjudication binding; figure generator now unlinks stale PNG/PDF on skip; see pipeline/audits/round_2_engineering_audit_note.md\n\nRound 3 (new session, 2026-05-27): AC-5 prompt invariant tightening (6 prompts) + validator hard-fail on count-vs-critique mismatch + Fig 6 verdict-only fix; see pipeline/audits/round_3_engineering_audit_note.md\n\nCleanup (2026-06-18): removed scripts/loop_orchestrator.sh from manifest (RLCR loop infrastructure no longer needed; project moved to conversational workflow). Kept all other locked artifacts as project-history reference.",
   "schema_version": "1.0"
 }
