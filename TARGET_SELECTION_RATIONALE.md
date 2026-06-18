@@ -4,6 +4,7 @@
 
 **Lab**: Cheng Lab, Columbia University, Department of Biomedical Engineering / Department of Medicine.
 **Project**: Self-amplifying RNA + sublingual microneedle delivery of a secreted endocrine factor for obesity, type 2 diabetes, and metabolic-associated steatohepatitis (MASH).
+
 **Document version**: 2026-06-18 (revised with Layer 5 expert deliverability curation, indication-parameterized L2/L6, and gate-then-rank layer ordering). All numbers below derive from the cascade applied to fully real public data (Open Targets 26.03, NHGRI-EBI GWAS Catalog latest, UniProt SwissProt human reviewed, ChEMBL via REST API by indication, PubMed E-utilities literature counts) plus a hand-curated 23-gene exclusion list for deliverability failure modes that public databases do not cover.
 
 ---
@@ -157,6 +158,12 @@ Layer 6 is *indication-scoped in lockstep with Layer 2*: when the cascade is run
 
 The honest scope of what Layer 6 produces is *a ranking, not a discovery*. The opportunity formula uses hand-set weights (GWAS bonus of 0.5 per hit capped at 10, PubMed log-density coefficient of 0.1) that have not been calibrated against any ground-truth outcome dataset. Rankings near the top should be read as a *tier* rather than a precise ordering: candidates within the top decile of the obesity-scoped shortlist should all be regarded as defensible cargos, with the choice among them determined by additional information beyond the cascade.
 
+**Two phase-penalty corrections** are applied to make the L6 denominator reflect *crowded active development* rather than just "highest clinical phase ever reached":
+
+1. **Indication-scoped phase**: ChEMBL `max_phase` is recorded per (compound, indication). The original cascade collapsed across all 9 queried indication tags (obesity, T2D, MASH, NAFLD, cardiovascular, heart failure, dyslipidemia, cachexia, muscle wasting) by taking the gene-wise maximum. This wrongly penalized targets whose only clinical advancement was in an off-direction indication — e.g. TNF Phase 3 trials are for *cachexia* (excess weight loss in cancer), the opposite of obesity, yet TNF's obesity-scoped opportunity was being divided by `(1 + 3) = 4`. The corrected logic counts a ChEMBL row only if its indication matches the cascade's `--indication` scope. Under `--indication obesity`, TNF / IL6 / IL1A / IL1B all revert to effective phase 0 (their Phase 2-3 advancement was for cachexia or T2D, not obesity); only MSTN retains its obesity-row Phase 2 (bimagrumab, anti-ActRII), which is genuinely an active obesity competitor.
+
+2. **Withdrawn-flag overlay**: A compound's `max_phase=4` (approved/marketed) flag does not distinguish currently-marketed drugs from drugs that were approved then later withdrawn for safety. We re-queried ChEMBL's molecule endpoint for `withdrawn_flag` across all 389 compounds in our subset with `max_phase >= 2`. Of 17 withdrawn compounds found, 0 affect a cascade-admissible candidate — every withdrawn compound's primary target is a non-secreted GPCR, ion channel, transporter, or nuclear receptor that Layer 1 (secretion requirement) or Layer 3 (signaling-class requirement) already excludes. This is another instance of the same modality-driven finding noted at Layer 4: the historical metabolic clinical failures are concentrated in protein classes our delivery platform cannot address, so they cannot pollute our shortlist by either route.
+
 ### Implementation notes
 
 The first five cascade layers are implemented entirely in target-blind code — no gene symbol of interest is hard-coded as a filter or as a special case. Layer 6 is necessarily target-specific (it is a curated exclusion list), but each entry carries an explicit failure-mode tag in source code, and the inclusion/exclusion of any given gene can be traced. The full implementation has been run against current Open Targets (version 26.03), GWAS Catalog (latest), ChEMBL (via REST API), UniProt (SwissProt human reviewed), and PubMed (via NCBI E-utilities for 1,918 modality-compatible candidate genes).
@@ -169,7 +176,34 @@ For this paper's primary indication of chronic weight management, we run the cas
 
 **Obesity-scoped final shortlist**: **112** candidates. Cascade chain: 19,327 → L1=1,921 → L2=426 → L3=128 → L4=128 → L5=112, then L6 ranks those 112.
 
-The top of this obesity-scoped opportunity ranking is occupied by signaling growth factors with strong BMI GWAS support: brain-derived neurotrophic factor (BDNF, with 12 BMI-significant GWAS hits), neuregulin-1 (NRG1, 7 BMI hits), BMP8A (a brown-fat thermogenesis regulator), interleukin-34 (IL34), and calcitonin gene-related peptide β (CALCB). Further down the top tier are TAFA5, FGF5, heparin-binding EGF (HBEGF), ALK-ligand 2 (ALKAL2), and GDF15. The remainder of the 112-candidate list contains the well-known metabolic signaling proteins — BMP7, adiponectin (ADIPOQ), GDNF, neuregulin-4 (NRG4, a brown-adipose batokine), klotho (KL), interleukin-10, resistin (RETN), the irisin precursor FNDC5, and so on.
+### Top 20 of the obesity-scoped L6 ranking
+
+| Rank | Gene | Opp. score | OT obesity | BMI GWAS | Max phase | Protein class |
+|---:|---|---:|---:|---:|---:|---|
+|  1  | BDNF      | 5.61 | 0.61 | 12 | 0 | secreted_growth_factor |
+|  2  | NRG1      | 3.70 | 0.20 |  7 | 0 | secreted_growth_factor |
+|  3  | BMP8A     | 1.07 | 0.07 |  2 | 0 | secreted_growth_factor |
+|  4  | IL34      | 1.01 | 0.01 |  2 | 0 | secreted_growth_factor |
+|  5  | CALCB     | 1.00 | 0.00 |  2 | 0 | secreted_hormone |
+|  6  | TAFA5     | 0.87 | 0.37 |  1 | 0 | secreted_cytokine |
+|  7  | FGF5      | 0.86 | 0.36 |  1 | 0 | secreted_growth_factor |
+|  8  | HBEGF     | 0.73 | 0.23 |  1 | 0 | secreted_growth_factor |
+|  9  | ALKAL2    | 0.71 | 0.21 |  1 | 0 | secreted_cytokine |
+| **10** | **→ GDF15 ←** | **0.62** | **0.12** | **1** | **0** | **secreted_hormone** |
+| 11  | BMP7      | 0.56 | 0.06 |  1 | 0 | secreted_growth_factor |
+| 12  | PNOC      | 0.53 | 0.03 |  1 | 0 | secreted_neuropeptide |
+| 13  | GNRH2     | 0.52 | 0.02 |  1 | 0 | secreted_hormone |
+| 14  | CCL28     | 0.51 | 0.01 |  1 | 0 | secreted_cytokine |
+| 15  | MLN       | 0.51 | 0.01 |  1 | 0 | secreted_hormone |
+| 16  | EFEMP1    | 0.51 | 0.01 |  1 | 0 | secreted_growth_factor |
+| 17  | PDGFC     | 0.51 | 0.01 |  1 | 0 | secreted_growth_factor |
+| 18  | IL17B     | 0.50 | 0.00 |  1 | 0 | secreted_cytokine |
+| 19  | GDNF      | 0.35 | 0.35 |  0 | 0 | secreted_growth_factor |
+| 20  | ADCYAP1   | 0.31 | 0.31 |  0 | 0 | secreted_hormone |
+
+*(Reproducible via `python3 cascade.py --indication obesity`. Full 112-candidate ranking and per-gene cascade trace available in the same command output.)*
+
+The top of this ranking is dominated by signaling growth factors with strong BMI GWAS support: BDNF (12 BMI-significant GWAS hits), NRG1 (7 BMI hits), BMP8A (a brown-fat thermogenesis regulator), interleukin-34, and calcitonin gene-related peptide β (CALCB). The middle tier (positions 6-20) consists mostly of signaling proteins with one BMI GWAS hit plus moderate Open Targets obesity scores: TAFA5, FGF5, HBEGF, ALKAL2, GDF15, BMP7, the prepronociceptin neuropeptide PNOC, MLN (motilin), and others. The remainder of the 112-candidate list contains additional well-known metabolic signaling proteins not visible in the top 20 — adiponectin (ADIPOQ), GDNF, neuregulin-4 (NRG4, a brown-adipose batokine), klotho (KL), interleukin-10, resistin (RETN), the irisin precursor FNDC5 — with progressively weaker obesity-specific evidence.
 
 By obesity-scoped opportunity score, GDF15 ranks **#10 of 112**. It places in the top decile of the obesity-scoped shortlist. It is not the single mathematically highest-scoring target; we do not claim it is. The top of the opportunity-ranked list (BDNF, NRG1, BMP8A, IL34, CALCB) are also defensible cargos and represent natural candidates for subsequent validation studies of the same delivery platform.
 

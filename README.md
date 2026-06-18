@@ -25,6 +25,7 @@ data/
     gwas_catalog_metabolic_loci.tsv          (NHGRI-EBI GWAS Catalog)
     uniprot_protein_classes.tsv              (UniProt SwissProt human reviewed)
     literature_metabolic_genes.tsv           (PubMed via NCBI E-utilities)
+    chembl_withdrawn_status.tsv              (ChEMBL withdrawn_flag overlay for compounds with max_phase>=2)
     ETL_LOG.md                               (provenance + row counts)
   raw_dumps/                     Original public-DB dumps (~1.5 GB, gitignored)
   etl/                           ETL scripts that produced snapshots_real/

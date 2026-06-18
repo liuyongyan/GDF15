@@ -51,6 +51,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent
 DATA = REPO / "data" / "snapshots_real"
 CHEMBL = REPO / "data" / "raw_dumps" / "chembl" / "chembl_metabolic_api_subset.tsv"
+CHEMBL_WITHDRAWN = REPO / "data" / "snapshots_real" / "chembl_withdrawn_status.tsv"
 
 
 # =========================================================================
@@ -84,21 +85,29 @@ INDICATION_SCOPES = {
     'metabolic': {
         'ot_diseases': {'obesity', 'type_2_diabetes', 'nafld', 'mash'},
         'gwas_traits': None,    # None means "any metabolic GWAS trait"
+        'chembl_indications': {  # the 9 indication tags we queried
+            'obesity', 'type_2_diabetes', 'mash', 'nafld',
+            'cardiovascular', 'heart_failure', 'dyslipidemia',
+            'cachexia', 'muscle_wasting',
+        },
         'use_pubmed': True,
     },
     'obesity': {
         'ot_diseases': {'obesity'},
         'gwas_traits': {'bmi'},
+        'chembl_indications': {'obesity'},
         'use_pubmed': False,
     },
     't2d': {
         'ot_diseases': {'type_2_diabetes'},
         'gwas_traits': {'type_2_diabetes', 'fasting_glucose', 'hba1c'},
+        'chembl_indications': {'type_2_diabetes'},
         'use_pubmed': False,
     },
     'mash': {
         'ot_diseases': {'nafld', 'mash'},
         'gwas_traits': {'mash', 'liver_fat_fraction', 'alt_levels'},
+        'chembl_indications': {'mash', 'nafld'},
         'use_pubmed': False,
     },
 }
@@ -212,7 +221,12 @@ def load_data():
         if g:
             gwas_by_gene.setdefault(g, []).append(r.get('trait', '?'))
 
-    chembl_max_phase: dict[str, int] = {}
+    # Per-(gene, compound, indication, phase) rows so L6 can scope by indication
+    # and exclude withdrawn compounds. Replaces the old flat
+    # chembl_max_phase[gene] = max(over_all_indications), which mis-attributed
+    # off-target-indication phases (e.g. TNF Phase 3 cachexia counted toward
+    # obesity opportunity ranking).
+    chembl_rows_by_gene: dict[str, list[tuple[str, int, str]]] = {}
     for r in chembl:
         g = r.get('gene_symbol')
         if not g:
@@ -221,15 +235,45 @@ def load_data():
             ph = int(float(r.get('max_phase', 0) or 0))
         except ValueError:
             ph = 0
-        chembl_max_phase[g] = max(chembl_max_phase.get(g, 0), ph)
+        cid = r.get('compound_chembl_id', '')
+        ind = r.get('indication', '')
+        chembl_rows_by_gene.setdefault(g, []).append((cid, ph, ind))
+
+    # Withdrawn-status overlay: compounds approved (max_phase=4) and later
+    # pulled from market, or with regulatory withdrawn_flag set in ChEMBL.
+    # These should not contribute to "crowded program" phase penalty.
+    chembl_withdrawn: dict[str, bool] = {}
+    if CHEMBL_WITHDRAWN.exists():
+        with CHEMBL_WITHDRAWN.open() as f:
+            for r in csv.DictReader(f, delimiter='\t'):
+                chembl_withdrawn[r['compound_chembl_id']] = (
+                    r.get('withdrawn_flag', 'False') == 'True')
 
     return {
         'uniprot': uniprot_by_gene,
         'lit': lit_by_gene,
         'ot': ot_by_gene,
         'gwas': gwas_by_gene,
-        'chembl_phase': chembl_max_phase,
+        'chembl_rows': chembl_rows_by_gene,
+        'chembl_withdrawn': chembl_withdrawn,
     }
+
+
+def effective_max_phase(gene: str, db, scope) -> tuple[int, list[tuple[str, int, str]]]:
+    """Compute the cascade-relevant max clinical phase for `gene` under `scope`.
+
+    Counts only ChEMBL rows whose indication is in the scope's chembl_indications,
+    and excludes compounds with withdrawn_flag=True (approved-then-withdrawn).
+    Returns (max_phase, contributing_rows) where contributing_rows is the list
+    of (compound_id, phase, indication) rows that were counted (for trace).
+    """
+    rows = db['chembl_rows'].get(gene, [])
+    in_scope_rows = [(cid, ph, ind) for (cid, ph, ind) in rows
+                     if ind in scope['chembl_indications']
+                     and not db['chembl_withdrawn'].get(cid, False)]
+    if not in_scope_rows:
+        return 0, []
+    return max(ph for _, ph, _ in in_scope_rows), in_scope_rows
 
 
 # =========================================================================
@@ -322,7 +366,7 @@ def L6_opportunity(gene: str, db, scope) -> tuple[float, float, int, float, int,
     evidence = (ot_sum
                 + L6_GWAS_WEIGHT * min(gwas_n, 10)
                 + L6_PUBMED_WEIGHT * math.log10(pm + 1))
-    phase = db['chembl_phase'].get(gene, 0)
+    phase, _ = effective_max_phase(gene, db, scope)
     opp = evidence / (1 + phase)
     return opp, evidence, phase, ot_sum, gwas_n, pm
 
@@ -392,6 +436,17 @@ def main() -> int:
             print(f"  L6 opportunity rank = #{rank_full} of {len(admissible)} ({args.indication}-scoped)")
             pm_label = f"PubMed_metabolic={pm}" if scope['use_pubmed'] else "PubMed=n/a"
             print(f"     score={opp:.3f}  OT_sum={ot_s:.3f} GWAS={gw} {pm_label} max_phase={ph}")
+            _, in_scope_rows = effective_max_phase(g, db, scope)
+            all_rows = db['chembl_rows'].get(g, [])
+            if all_rows:
+                print(f"     ChEMBL: {len(in_scope_rows)} in-scope rows counted, "
+                      f"{len(all_rows) - len(in_scope_rows)} excluded")
+                for cid, p, ind in all_rows:
+                    in_sc = ind in scope['chembl_indications']
+                    wd = db['chembl_withdrawn'].get(cid, False)
+                    flag = "COUNTED" if (in_sc and not wd) else (
+                        "withdrawn" if wd else f"out-of-scope({ind})")
+                    print(f"       {cid:<15} phase={p}  ind={ind:<20}  {flag}")
         return 0
 
     # L6 ranking output
