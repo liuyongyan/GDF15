@@ -70,6 +70,17 @@ The selection has to consider multiple dimensions at once: **what the disease bi
 
 We assembled what we call a **target cascade**. Starting from the full set of ~20,000 reviewed human protein-coding genes, the pipeline applies six sequential layers. The first five (L1 through L5) are **boolean gates**: a candidate either passes each filter or it does not. The sixth (L6) is the **ranker**: it does not filter the admissible set, only orders it by an opportunity index. The execution order matches the layer numbering — gates run first, then the surviving candidates are ranked.
 
+**Data sources by layer**:
+
+| Layer | Role | Data source |
+|---|---|---|
+| L1 | gate | UniProt SwissProt human reviewed (subcellular localization, sequence length, signal peptide, post-translational modification annotations) |
+| L2 | gate | Open Targets Platform v26.03 (disease association scores) + NHGRI-EBI GWAS Catalog (genome-wide-significant hits) + NCBI PubMed via E-utilities (literature counts; metabolic scope only) |
+| L3 | gate | UniProt SwissProt `protein_class` annotation (signaling-class taxonomy) |
+| L4 | gate | Hand-curated 4-target list from the public clinical-development record (CETP, CNR1, HTR2C, DGAT1) |
+| L5 | gate | Hand-curated 23-gene list with per-failure-mode tags, written out in `cascade.py` (no structured DB source — see §4 Layer 5 for the known-limitation discussion) |
+| L6 | rank | ChEMBL REST API queried by MeSH indication (compound-level `max_phase`) augmented with ChEMBL molecule-endpoint `withdrawn_flag` overlay; evidence numerator reuses L2's OT + GWAS + PubMed |
+
 ### Layer 1 — Modality compatibility
 
 This layer asks: *can our delivery platform actually produce this protein in functional form?* We require:
@@ -81,6 +92,8 @@ This layer asks: *can our delivery platform actually produce this protein in fun
 - It must have an **intrinsic plasma half-life of at least about an hour** (so that continuous expression can sustain therapeutic concentration).
 
 These criteria are evaluated against the UniProt SwissProt database, which provides curated annotations for each human protein's subcellular localization, sequence length, signal peptide, and post-translational modifications.
+
+**Data source**: UniProt SwissProt human reviewed release 2026_03 (one row per gene at `data/snapshots_real/uniprot_protein_classes.tsv`, 19,327 reviewed entries).
 
 **Layer 1 result**: approximately **1,921** secreted human proteins pass.
 
@@ -101,6 +114,11 @@ A modality-compatible protein is not worth pursuing if there is no evidence conn
 | `t2d` | type 2 diabetes | T2D / fasting glucose / HbA1c | not used |
 | `mash` | NAFLD + MASH | MASH / liver fat fraction / ALT | not used |
 
+**Data sources**:
+- Open Targets Platform v26.03 disease-anchored associations (`data/snapshots_real/opentargets_metabolic_associations.tsv`, 28,578 rows / 13,141 genes across 4 disease terms).
+- NHGRI-EBI GWAS Catalog full dump retrieved 2026-06, filtered to 10 metabolic traits (`data/snapshots_real/gwas_catalog_metabolic_loci.tsv`, 36,035 rows / 9,044 genes).
+- NCBI PubMed counts via E-utilities `esearch` with an `api_key` (`data/snapshots_real/literature_metabolic_genes.tsv`, 1,918 genes — the L1-pass subset). Metabolic-scope only.
+
 **Layer 2 result depends on scope**: `metabolic` retains **852** candidates from L1's 1,921; `obesity` retains **426**; `t2d` retains **460**; `mash` retains **277**. The metabolic scope serves as the cascade's reusable backbone (one cascade artifact that future T2D-first or MASH-first papers can specialize); per-indication scopes give the project-specific shortlist directly.
 
 ### Layer 3 — Druggability
@@ -117,6 +135,8 @@ Excluded at this layer are secreted enzymes (catalytic, requiring functional enz
 
 This is a deliberate narrowing relative to a naïve "any secreted protein" druggability test. It reflects the modality's strength: saRNA-encoded local production delivers a *signaling molecule* into circulation; it does not deliver enzymatic activity or rebuild a lipid-transport pathway.
 
+**Data source**: UniProt SwissProt `protein_class` annotation, parsed from the same SwissProt release used by Layer 1.
+
 **Layer 3 result**: **239** candidates retained (filtered from 852, removing 613 mostly-enzyme and transport-protein candidates).
 
 ### Layer 4 — Safety baseline (confirmatory audit)
@@ -126,6 +146,8 @@ We compile a list of historically failed metabolic-disease drug targets (CETP, c
 In our cascade this layer is structurally vacuous: it excludes **zero** candidates, because all four historical failures are non-secreted GPCRs (CNR1, HTR2C) or non-secreted enzymes (DGAT1) that are already excluded by Layer 1's secretion requirement, and the one that *is* secreted (CETP, a lipid transport protein) is already excluded by Layer 3's restriction to direct signaling protein classes.
 
 The vacuity is itself a finding worth recording. The chemistries that produced most historical metabolic clinical failures — small-molecule GPCR ligands and small-molecule enzyme inhibitors — are precisely the modalities the saRNA platform cannot deliver in the first place. The platform's structural constraint inherently routes us away from the most well-trodden failure paths.
+
+**Data source**: Hand-curated 4-target list from the public clinical-development record (FDA/EMA action histories, primary trial publications), written out as `L4_KNOWN_FAILURES` in `cascade.py` with per-gene citation comments.
 
 **Layer 4 result**: **239** candidates retained (0 excluded by audit; 0 excluded by audit *because* L1+L3 already covered all four historical failures).
 
@@ -142,6 +164,8 @@ Layer 1's modality filter is a coarse, structural check: secreted plus an ORF th
 **(d) Annotated as secreted-signaling by UniProt but actually not.** Database annotation pipelines sometimes flag a protein as "secreted" because it has been detected extracellularly, even though its primary biological role is not as an extracellular signaling ligand. Choosing such a protein as a drug-target cargo is biologically inappropriate. The genes excluded under this mode are **MAPT** (tau, which is primarily an intracellular microtubule-binding protein and the principal driver of Alzheimer-type neurodegeneration when extracellular), **HMGB1** (a nuclear chromatin protein released only as a damage-associated alarmin), and **LTBP3** (a structural scaffold for latent TGFβ rather than an active ligand).
 
 This layer is explicitly a *human/expert annotation* layer, not a database-derived filter. Its scope (the specific genes excluded and the failure-mode tag attached to each) is fully written out in the cascade source code so that any candidate's exclusion can be audited and challenged. We treat this as a known limitation of the methodology: the four failure modes above would, in principle, be capturable from structured databases (UniProt half-life annotations, prohormone-processing databases, complex-portal heterodimer annotations) if the right curated sources existed at sufficient coverage. They presently do not.
+
+**Data source**: Hand-curated 23-gene list with per-failure-mode tags (`short_half_life`, `prohormone_processing`, `heterodimer_required`, `misclassified_secreted`), written out as `L5_EXPERT_EXCLUSIONS` in `cascade.py`. No structured public database — see the known-limitation discussion above.
 
 **Layer 5 result** *(metabolic scope)*: **219** final admissible candidates (20 excluded from the L4 set of 239: 6 short-half-life, 6 prohormone-processing, 5 heterodimer-required, 3 misclassified-secreted). *(obesity scope: **112** final admissible; t2d: 121; mash: 83.)*
 
@@ -164,6 +188,11 @@ The honest scope of what Layer 6 produces is *a ranking, not a discovery*. The o
 1. **Indication-scoped phase**: ChEMBL `max_phase` is recorded per (compound, indication). The original cascade collapsed across all 9 queried indication tags (obesity, T2D, MASH, NAFLD, cardiovascular, heart failure, dyslipidemia, cachexia, muscle wasting) by taking the gene-wise maximum. This wrongly penalized targets whose only clinical advancement was in an off-direction indication — e.g. TNF Phase 3 trials are for *cachexia* (excess weight loss in cancer), the opposite of obesity, yet TNF's obesity-scoped opportunity was being divided by `(1 + 3) = 4`. The corrected logic counts a ChEMBL row only if its indication matches the cascade's `--indication` scope. Under `--indication obesity`, TNF / IL6 / IL1A / IL1B all revert to effective phase 0 (their Phase 2-3 advancement was for cachexia or T2D, not obesity); only MSTN retains its obesity-row Phase 2 (bimagrumab, anti-ActRII), which is genuinely an active obesity competitor.
 
 2. **Withdrawn-flag overlay**: A compound's `max_phase=4` (approved/marketed) flag does not distinguish currently-marketed drugs from drugs that were approved then later withdrawn for safety. We re-queried ChEMBL's molecule endpoint for `withdrawn_flag` across all 389 compounds in our subset with `max_phase >= 2`. Of 17 withdrawn compounds found, 0 affect a cascade-admissible candidate — every withdrawn compound's primary target is a non-secreted GPCR, ion channel, transporter, or nuclear receptor that Layer 1 (secretion requirement) or Layer 3 (signaling-class requirement) already excludes. This is another instance of the same modality-driven finding noted at Layer 4: the historical metabolic clinical failures are concentrated in protein classes our delivery platform cannot address, so they cannot pollute our shortlist by either route.
+
+**Data sources**:
+- ChEMBL via REST API queried by MeSH indication ID across 9 metabolic-relevant indications (`data/raw_dumps/chembl/chembl_metabolic_api_subset.tsv`, 1,972 compound-indication rows / 434 unique genes).
+- ChEMBL molecule-endpoint `withdrawn_flag` overlay batch-fetched for the 389 compounds with `max_phase >= 2` (`data/snapshots_real/chembl_withdrawn_status.tsv`, 17 carry `withdrawn_flag=True`).
+- The evidence numerator reuses Layer 2's OT + GWAS + PubMed snapshots; weights are hand-set (see opportunity formula above).
 
 ### Implementation notes
 
