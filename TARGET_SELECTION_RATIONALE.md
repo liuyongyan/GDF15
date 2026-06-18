@@ -3,6 +3,7 @@
 *An accessible explanation of our target selection rationale for the saRNA-sublingual delivery platform.*
 
 **Lab**: Cheng Lab, Columbia University, Department of Biomedical Engineering / Department of Medicine.
+
 **Project**: Self-amplifying RNA + sublingual microneedle delivery of a secreted endocrine factor for obesity, type 2 diabetes, and metabolic-associated steatohepatitis (MASH).
 
 **Document version**: 2026-06-18 (revised with Layer 5 expert deliverability curation, indication-parameterized L2/L6, and gate-then-rank layer ordering). All numbers below derive from the cascade applied to fully real public data (Open Targets 26.03, NHGRI-EBI GWAS Catalog latest, UniProt SwissProt human reviewed, ChEMBL via REST API by indication, PubMed E-utilities literature counts) plus a hand-curated 23-gene exclusion list for deliverability failure modes that public databases do not cover.
