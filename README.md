@@ -7,12 +7,12 @@ genes.
 
 The work here is a **honest reckoning**: GDF15 is *not* the single
 objectively-top-ranked target produced by the data cascade. It is one of
-~219 cascade-admissible candidates (rank #26 overall, #18 in the obesity
-subset). The case for picking GDF15 first rests on three **cascade-external
-derisking signals** — a natural human knockout experiment (hyperemesis
-gravidarum), a fully characterized receptor (GFRAL), and an active Phase-1
-industry asset (NGM120). See `TARGET_SELECTION_RATIONALE.md` for the
-full non-expert narrative.
+~112 cascade-admissible obesity-scoped candidates, ranked #10 by
+obesity-scoped opportunity score (top decile). The case for picking GDF15
+first rests on three **cascade-external derisking signals** — a natural
+human knockout experiment (hyperemesis gravidarum), a fully characterized
+receptor (GFRAL), and an active Phase-1 industry asset (NGM120). See
+`TARGET_SELECTION_RATIONALE.md` for the full non-expert narrative.
 
 ## Repository layout
 
@@ -34,20 +34,26 @@ references/                      Cited PDFs (gitignored; kept locally)
 ## Reproducing the cascade
 
 ```bash
-python3 cascade.py                # full top-30 + obesity-only top-30
-python3 cascade.py --gene GDF15   # single-gene trace with rank
+python3 cascade.py                                 # default: --indication metabolic
+python3 cascade.py --indication obesity            # obesity-scoped (this paper)
+python3 cascade.py --indication obesity --gene GDF15   # single-gene trace
+python3 cascade.py --indication t2d                # T2D shortlist
+python3 cascade.py --indication mash               # MASH shortlist
 ```
 
-Expected output (with current snapshots):
+Expected cascade chain by indication scope (with current snapshots):
 
-```
-Cascade: 19327 -> L1=1921 -> L2=852 -> L3=239 -> L5=239 -> L6=219
-Obesity-specific subset: 112
-```
+| Indication | L1 | L2 | L3 | L5 | L6 | GDF15 rank |
+|---|---|---|---|---|---|---|
+| `metabolic` (broadest) | 1921 | 852 | 239 | 239 | 219 | #26 |
+| `obesity` (this paper) | 1921 | 426 | 128 | 128 | **112** | **#10** |
+| `t2d` | 1921 | 460 | 139 | 139 | 121 | — |
+| `mash` | 1921 | 277 | 93 | 93 | 83 | — |
 
-The six layers are: L1 modality compatibility, L2 disease evidence,
-L3 druggability (signaling classes only), L4 opportunity index (ranking,
-not filter), L5 historical safety audit (vacuous for our modality —
+The six layers are: L1 modality compatibility, L2 disease evidence
+(indication-parameterized), L3 druggability (signaling classes only),
+L4 opportunity index (ranking, also indication-parameterized — not a
+filter), L5 historical safety audit (vacuous for our modality —
 itself a finding), L6 expert deliverability curation (catches short
 half-life, prohormone processing, obligate heterodimer, and UniProt
 misclassification — failure modes not captured by L1's coarse structural

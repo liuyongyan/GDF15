@@ -4,7 +4,7 @@
 
 **Lab**: Cheng Lab, Columbia University, Department of Biomedical Engineering / Department of Medicine.
 **Project**: Self-amplifying RNA + sublingual microneedle delivery of a secreted endocrine factor for obesity, type 2 diabetes, and metabolic-associated steatohepatitis (MASH).
-**Document version**: 2026-06-18 (revised with Layer 6 expert deliverability curation). All numbers below derive from the cascade applied to fully real public data (Open Targets 26.03, NHGRI-EBI GWAS Catalog latest, UniProt SwissProt human reviewed, ChEMBL via REST API by indication, PubMed E-utilities literature counts) plus a hand-curated 23-gene exclusion list for deliverability failure modes that public databases do not cover.
+**Document version**: 2026-06-18 (revised with Layer 6 expert deliverability curation and indication-parameterized L2/L4). All numbers below derive from the cascade applied to fully real public data (Open Targets 26.03, NHGRI-EBI GWAS Catalog latest, UniProt SwissProt human reviewed, ChEMBL via REST API by indication, PubMed E-utilities literature counts) plus a hand-curated 23-gene exclusion list for deliverability failure modes that public databases do not cover.
 
 ---
 
@@ -86,11 +86,20 @@ These criteria are evaluated against the UniProt SwissProt database, which provi
 
 A modality-compatible protein is not worth pursuing if there is no evidence connecting it to the disease. This layer requires *at least one* of the following:
 
-- An Open Targets Platform association score above a low threshold (≥ 0.05) for obesity, T2D, NAFLD, or MASH. Open Targets aggregates 20+ independent evidence sources, so a non-zero score implies multi-source support.
-- At least one genome-wide-significant GWAS hit (p < 5×10⁻⁸) in the NHGRI-EBI GWAS Catalog for a metabolic trait (BMI, hemoglobin A1c, liver fat fraction, type 2 diabetes, lipid panel, etc.).
-- A substantial body of indexed PubMed literature (≥ 50 publications) connecting the gene to metabolic context.
+- An Open Targets Platform association score above a low threshold (≥ 0.05) for the indication(s) in scope. Open Targets aggregates 20+ independent evidence sources, so a non-zero score implies multi-source support.
+- At least one genome-wide-significant GWAS hit (p < 5×10⁻⁸) in the NHGRI-EBI GWAS Catalog for a trait in scope.
+- (In broad-metabolic scope only:) a substantial body of indexed PubMed literature (≥ 50 publications) connecting the gene to metabolic context.
 
-**Layer 2 result**: approximately **852** candidates retained.
+**Layer 2 is indication-parameterized.** The cascade takes an `--indication` flag that sets the disease/trait scope, and the same flag also controls the L4 opportunity scoring (so the gate and the ranker stay consistent). The supported scopes are:
+
+| Scope | OT diseases | GWAS traits | PubMed |
+|---|---|---|---|
+| `metabolic` (default) | obesity + T2D + NAFLD + MASH | any metabolic | used (≥50 threshold) |
+| `obesity` | obesity | BMI | not used (our PubMed counts are metabolic-aggregated, not obesity-specific) |
+| `t2d` | type 2 diabetes | T2D / fasting glucose / HbA1c | not used |
+| `mash` | NAFLD + MASH | MASH / liver fat fraction / ALT | not used |
+
+**Layer 2 result depends on scope**: `metabolic` retains **852** candidates from L1's 1,921; `obesity` retains **426**; `t2d` retains **460**; `mash` retains **277**. The metabolic scope serves as the cascade's reusable backbone (one cascade artifact that future T2D-first or MASH-first papers can specialize); per-indication scopes give the project-specific shortlist directly.
 
 ### Layer 3 — Druggability
 
@@ -142,7 +151,7 @@ Layer 1's modality filter is a coarse, structural check: secreted plus an ORF th
 
 This layer is explicitly a *human/expert annotation* layer, not a database-derived filter. Its scope (the specific genes excluded and the failure-mode tag attached to each) is fully written out in the cascade source code so that any candidate's exclusion can be audited and challenged. We treat this as a known limitation of the methodology: the four failure modes above would, in principle, be capturable from structured databases (UniProt half-life annotations, prohormone-processing databases, complex-portal heterodimer annotations) if the right curated sources existed at sufficient coverage. They presently do not.
 
-**Layer 6 result**: **219** final admissible candidates (20 excluded from the L5 set of 239: 6 short-half-life, 6 prohormone-processing, 5 heterodimer-required, 3 misclassified-secreted).
+**Layer 6 result** *(metabolic scope)*: **219** final admissible candidates (20 excluded from the L5 set of 239: 6 short-half-life, 6 prohormone-processing, 5 heterodimer-required, 3 misclassified-secreted). *(obesity scope: **112** final admissible; t2d: 121; mash: 83.)*
 
 ### Implementation notes
 
@@ -150,17 +159,17 @@ The first five cascade layers are implemented entirely in target-blind code — 
 
 ---
 
-## 5. Narrowing further: obesity-specific candidates
+## 5. The obesity-scoped shortlist
 
-The 219-candidate post-L6 shortlist consists of signaling secreted proteins with metabolic-disease evidence that are also genuinely deliverable by the saRNA platform. For our project's primary indication of chronic weight management, we examined which of these candidates have *specifically obesity* evidence — defined as either an Open Targets association score above threshold for the obesity disease term, or at least one GWAS hit for body mass index.
+For this paper's primary indication of chronic weight management, we run the cascade with `--indication obesity`, which restricts Layer 2's disease scope to the obesity term and the BMI GWAS trait, and restricts Layer 4's opportunity scoring to the same. This is the indication-specialized instance of the same six-layer cascade described in §4 — not a separate post-cascade narrowing step.
 
-**Obesity-specific subset**: **112** candidates.
+**Obesity-scoped final shortlist**: **112** candidates. Cascade chain: 19,327 → L1=1,921 → L2=426 → L3=128 → L5=128 → L6=112.
 
-This is the working pool from which the lab's first-cargo decision was made. The top of this list is occupied by signaling growth factors and adipokines: brain-derived neurotrophic factor (BDNF, with 12 BMI-significant GWAS hits), platelet-derived growth factor C (PDGFC), BMP8A (a brown-fat thermogenesis regulator), neuregulin-1 (NRG1), angiopoietin-like 8 (ANGPTL8, a hepatic/adipose lipid metabolism regulator), TGF-β1, interleukin-34, and the IGF family (IGF2, IGF1). Further down the obesity-specific list are other established metabolic signaling proteins: erythropoietin (EPO), klotho (KL), BMP7, neuregulin-4 (NRG4, a brown-adipose batokine), IL-10, TAFA5, adiponectin (ADIPOQ), GDNF, resistin (RETN), and irisin precursor FNDC5.
+The top of this obesity-scoped opportunity ranking is occupied by signaling growth factors with strong BMI GWAS support: brain-derived neurotrophic factor (BDNF, with 12 BMI-significant GWAS hits), neuregulin-1 (NRG1, 7 BMI hits), BMP8A (a brown-fat thermogenesis regulator), interleukin-34 (IL34), and calcitonin gene-related peptide β (CALCB). Further down the top tier are TAFA5, FGF5, heparin-binding EGF (HBEGF), ALK-ligand 2 (ALKAL2), and GDF15. The remainder of the 112-candidate list contains the well-known metabolic signaling proteins — BMP7, adiponectin (ADIPOQ), GDNF, neuregulin-4 (NRG4, a brown-adipose batokine), klotho (KL), interleukin-10, resistin (RETN), the irisin precursor FNDC5, and so on.
 
-By raw opportunity score, GDF15 ranks **#18 of 112** in this obesity-specific shortlist (and **#26 of 219** in the full cascade-admissible set). It places in the top quintile of the obesity-specific candidates, between IGF1 and CALCB (calcitonin gene-related peptide β) and in the same range as the established metabolic-hormone tier of the shortlist. It is not the single mathematically highest-scoring target; we do not claim it is. The top of the opportunity-ranked list (BDNF, PDGFC, BMP8A, NRG1, ANGPTL8) are also defensible cargos and represent natural candidates for subsequent validation studies of the same delivery platform.
+By obesity-scoped opportunity score, GDF15 ranks **#10 of 112**. It places in the top decile of the obesity-scoped shortlist. It is not the single mathematically highest-scoring target; we do not claim it is. The top of the opportunity-ranked list (BDNF, NRG1, BMP8A, IL34, CALCB) are also defensible cargos and represent natural candidates for subsequent validation studies of the same delivery platform.
 
-Two categories of well-known metabolic hormones are conspicuously absent from this updated shortlist relative to a naïve cascade output: the gut/pancreatic peptide hormones (CCK, PYY, GIP, GCG/GLP-1, ghrelin, insulin) and the hypothalamic prohormones (POMC, PCSK1N, NPY, AGRP). Their absence is not an oversight — these are exactly the targets excluded by Layer 6's deliverability curation (short native half-life, or required PC1/2 cleavage). They are pharmacologically interesting in other modalities (chemically-modified peptide drugs, gene therapy to neuroendocrine cells), but they are not deliverable as cargos by our platform.
+Two categories of well-known metabolic hormones are conspicuously absent from this shortlist relative to a naïve cascade output: the gut/pancreatic peptide hormones (CCK, PYY, GIP, GCG/GLP-1, ghrelin, insulin) and the hypothalamic prohormones (POMC, PCSK1N, NPY). Their absence is not an oversight — these are exactly the targets excluded by Layer 6's deliverability curation (short native half-life, or required PC1/2 cleavage). They are pharmacologically interesting in other modalities (chemically-modified peptide drugs, gene therapy to neuroendocrine cells), but they are not deliverable as cargos by our platform.
 
 ---
 
@@ -172,7 +181,7 @@ The cascade ranking is one input to a target-selection decision but not the only
 
 In 2024, a multi-institution study published in *Nature* (Fejzo et al.) established that the severe nausea and weight loss of hyperemesis gravidarum during pregnancy is caused by **elevated endogenous GDF15** acting on its receptor in the hindbrain. This is, in effect, an unintentional human dose-response study: when a woman's GDF15 levels rise during early pregnancy, she experiences sustained anorexia and significant body weight loss. The effect is dramatic, well-documented across thousands of patients, and unambiguous about the direction of causation.
 
-No other candidate on our obesity shortlist has this strength of *human in-vivo* evidence. BDNF, BMP8A, ANGPTL8, NRG1, and other top-cascade candidates rely on rodent models or genetic association markers — both of which are weaker forms of causal evidence than what hyperemesis gravidarum provides for GDF15. This is an important asymmetry, and the cascade cannot capture it because no public structured database encodes "endogenous level of this protein produces this body composition change in humans."
+No other candidate on our obesity shortlist has this strength of *human in-vivo* evidence. BDNF, NRG1, BMP8A, IL34, and other top-cascade candidates rely on rodent models or genetic association markers — both of which are weaker forms of causal evidence than what hyperemesis gravidarum provides for GDF15. This is an important asymmetry, and the cascade cannot capture it because no public structured database encodes "endogenous level of this protein produces this body composition change in humans."
 
 ### A receptor characterized in 2017
 
@@ -180,7 +189,7 @@ The receptor through which GDF15 acts (GFRAL) was identified in 2017 by three in
 
 This anatomical specificity has two practical implications. First, systemic GDF15 produced from our sublingual platform will reach all tissues but will only act through this restricted neural circuit, limiting off-target effects compared to receptors that are widely expressed. Second, the side effect profile is *predictable*: the area postrema is also the brain's nausea-control center, so the expected adverse effect is nausea — the same side effect as GLP-1, mediated through a different pathway. We are not committing to a target whose adverse event profile will surprise us in Phase 1.
 
-By contrast, several other cascade-top candidates have less mature receptor pharmacology. The receptor mechanism for BMP8A's brown-fat effect remains debated. ANGPTL8's primary mechanism (inhibition of lipoprotein lipase via ANGPTL3/8 complex) is well-defined biochemically but the relevant target for therapeutic intervention is the complex rather than ANGPTL8 alone. NRG4's brown-adipose batokine pharmacology is established but receptor-level dose-response is at an earlier stage. Choosing a target with a well-characterized receptor reduces translational risk.
+By contrast, several other cascade-top candidates have less mature receptor pharmacology. The receptor mechanism for BMP8A's brown-fat effect remains debated. NRG1's metabolic effect is mediated through ErbB-family receptors that are broadly expressed across tissues, making target-organ selectivity harder. ALKAL2 acts through ALK, a receptor tyrosine kinase whose chronic agonism carries oncogenic concern. Choosing a target with a well-characterized, anatomically-restricted receptor reduces translational risk.
 
 ### Industry derisking via NGM120
 
@@ -190,9 +199,9 @@ This signal is also invisible to the cascade. Our ChEMBL query is restricted to 
 
 ### Execution readiness
 
-The Cheng Lab has already designed the saRNA construct encoding GDF15, optimized the sublingual microneedle formulation for this cargo, and generated initial mouse pharmacokinetic and weight-loss data with the combined platform. If we pivoted to BDNF, BMP8A, ANGPTL8, or another cascade-top candidate, this work would need to be repeated for the new cargo — a delay of approximately six months and substantial additional reagent expense.
+The Cheng Lab has already designed the saRNA construct encoding GDF15, optimized the sublingual microneedle formulation for this cargo, and generated initial mouse pharmacokinetic and weight-loss data with the combined platform. If we pivoted to BDNF, NRG1, BMP8A, or another cascade-top candidate, this work would need to be repeated for the new cargo — a delay of approximately six months and substantial additional reagent expense.
 
-This is not a scientific argument for GDF15 over BDNF, BMP8A, or ANGPTL8; those candidates remain scientifically defensible and may be tested in subsequent work. It is a project-realism argument: GDF15 is the candidate where the lab's first paper can be completed within a reasonable timeline.
+This is not a scientific argument for GDF15 over BDNF, NRG1, or BMP8A; those candidates remain scientifically defensible and may be tested in subsequent work. It is a project-realism argument: GDF15 is the candidate where the lab's first paper can be completed within a reasonable timeline.
 
 ---
 
@@ -203,7 +212,7 @@ Because we are taking pains to frame this honestly, it is worth stating explicit
 - **We are not claiming GDF15 is mechanistically superior to GLP-1 for weight loss.** The semaglutide-tirzepatide-retatrutide trajectory has set a very high efficacy bar. GDF15-pathway agonists have not yet demonstrated comparable Phase 3 outcomes in obesity.
 - **We are not claiming GDF15 will have fewer side effects than GLP-1.** Both pathways converge on the same anatomical nausea center. The side effect profile may turn out to be similar.
 - **We are not claiming GDF15 is the only worthwhile cargo for our platform.** The cascade explicitly identifies BDNF, BMP8A, INHBE, and several other secreted proteins as defensible alternative cargos. Future studies should validate the platform with these as well.
-- **We are not claiming the AI pipeline "discovered" GDF15.** It identified GDF15 as one of 112 admissible obesity-relevant signaling-protein candidates that are also genuinely deliverable by our platform, ranked #18 by raw opportunity score (top quintile). The selection of GDF15 specifically was made by combining cascade admissibility with three cascade-external derisking signals and with project execution readiness — a decision that human investigators made transparently rather than one that an algorithm produced.
+- **We are not claiming the AI pipeline "discovered" GDF15.** It identified GDF15 as one of 112 admissible obesity-relevant signaling-protein candidates that are also genuinely deliverable by our platform, ranked #10 by obesity-scoped opportunity score (top decile). The selection of GDF15 specifically was made by combining cascade admissibility with three cascade-external derisking signals and with project execution readiness — a decision that human investigators made transparently rather than one that an algorithm produced.
 
 What we *are* claiming is methodological: that the modality-constrained constraint cascade is a systematic, auditable framework for narrowing a high-dimensional target selection problem down to a defensible shortlist, and that GDF15 belongs in that shortlist for principled reasons.
 
@@ -217,11 +226,13 @@ The immediate next steps are:
 
 1. **Complete the cargo characterization in mouse models**: full pharmacokinetics of GDF15 expression after sublingual dosing; weight loss kinetics; body composition (DXA or NMR) to distinguish fat-mass from lean-mass change; glycemic control (oral glucose tolerance); hepatic steatosis improvement (histology and magnetic resonance spectroscopy); behavioral and tissue-level safety assessment.
 2. **Comparator studies**: head-to-head comparison with semaglutide and (where feasible) with a GLP-1-Fc fusion delivered by the same saRNA-microneedle platform, to separate the contribution of the cargo from the contribution of the delivery modality.
-3. **Platform expansion**: applying the same cascade and the same delivery platform to a second cargo from the obesity-specific shortlist. The natural candidates are BDNF (top-ranked, although blood-brain-barrier transit historically limited its development; saRNA-driven systemic production may circumvent this), BMP8A (brown-fat thermogenesis regulator with strong rodent precedent), ANGPTL8 (hepatic/adipose lipid metabolism regulator with substantial GWAS support), and NRG4 (brown-adipose batokine). Note that the well-known appetite-regulating gut peptides (CCK, PYY, GIP) are *not* on this expansion list because Layer 6 of the cascade excludes them on deliverability grounds (native plasma half-life too short, and in the case of PYY also requiring prohormone cleavage). A second cargo validation would convert the project from a single-target study into a delivery-platform study, which is a stronger publication-level contribution.
+3. **Platform expansion**: applying the same cascade and the same delivery platform to a second cargo from the obesity-scoped shortlist. The natural candidates are BDNF (top-ranked, although blood-brain-barrier transit historically limited its development; saRNA-driven systemic production may circumvent this), NRG1 (the #2 candidate on the obesity-scoped shortlist with 7 BMI GWAS hits), BMP8A (brown-fat thermogenesis regulator with strong rodent precedent), and NRG4 (brown-adipose batokine). Note that the well-known appetite-regulating gut peptides (CCK, PYY, GIP) are *not* on this expansion list because Layer 6 of the cascade excludes them on deliverability grounds (native plasma half-life too short, and in the case of PYY also requiring prohormone cleavage). A second cargo validation would convert the project from a single-target study into a delivery-platform study, which is a stronger publication-level contribution.
+
+4. **Indication expansion**: re-running the same cascade with `--indication t2d` (121 candidates) or `--indication mash` (83 candidates) to identify saRNA-deliverable cargos for type 2 diabetes or metabolic-associated steatohepatitis. The cascade architecture is indication-parameterized precisely so that future projects can specialize it without re-deriving the methodology.
 4. **Methodology release**: the constraint cascade itself, with full target-blind implementation and provenance, will be released so that other groups can apply it to other modalities (mRNA, AAV, antibody-drug conjugate) and other indications.
 
 ---
 
 ## 9. Summary in one paragraph
 
-The current standard of care for chronic weight management (the GLP-1 receptor agonist class) has transformed treatment but leaves substantial unmet need — gastrointestinal intolerance, lean mass loss, rebound on discontinuation, β-cell dependency, injection administration, cost, and non-response. Our laboratory has developed a delivery platform — self-amplifying RNA encoded into a sublingual microneedle patch — that addresses several of these limitations but is fundamentally incompatible with the chemistry of the existing GLP-1 drugs. The platform's question is therefore not "what beats semaglutide" but "what natively-deliverable secreted protein addresses an unmet metabolic need that GLP-1 cannot reach." We built a target-blind, modality-constrained AI cascade that compresses the ~20,000 reviewed human protein-coding genes through five sequential evidence-based filters plus one expert deliverability-curation layer, down to 219 admissible candidates (directly-druggable signaling proteins with metabolic-disease evidence that are also genuinely deliverable by saRNA), of which 112 have specifically obesity-relevant evidence. From this shortlist we selected GDF15 as the first cargo to validate experimentally — not because it ranks highest in any single score, but because it combines cascade admissibility (rank #18 of 112 in the obesity-specific subset) with three independently verifiable derisking signals (the hyperemesis gravidarum natural experiment, characterization of the GFRAL receptor in 2017, and Phase 1 industrial validation of the GFRAL axis via NGM120) plus execution readiness from existing lab work. The wet-lab mouse data is the actual scientific test; the AI pipeline is the justification for choosing GDF15 to test first.
+The current standard of care for chronic weight management (the GLP-1 receptor agonist class) has transformed treatment but leaves substantial unmet need — gastrointestinal intolerance, lean mass loss, rebound on discontinuation, β-cell dependency, injection administration, cost, and non-response. Our laboratory has developed a delivery platform — self-amplifying RNA encoded into a sublingual microneedle patch — that addresses several of these limitations but is fundamentally incompatible with the chemistry of the existing GLP-1 drugs. The platform's question is therefore not "what beats semaglutide" but "what natively-deliverable secreted protein addresses an unmet metabolic need that GLP-1 cannot reach." We built a target-blind, modality-constrained AI cascade that compresses the ~20,000 reviewed human protein-coding genes through five sequential evidence-based filters plus one expert deliverability-curation layer; specialized to obesity (the cascade's L2 evidence gate and L4 opportunity ranker take an indication parameter), it produces a 112-candidate obesity-scoped shortlist of signaling secreted proteins with obesity-relevant evidence that are also genuinely deliverable by saRNA. From this shortlist we selected GDF15 as the first cargo to validate experimentally — not because it ranks highest in any single score, but because it combines cascade admissibility (rank #10 of 112 in the obesity-scoped shortlist) with three independently verifiable derisking signals (the hyperemesis gravidarum natural experiment, characterization of the GFRAL receptor in 2017, and Phase 1 industrial validation of the GFRAL axis via NGM120) plus execution readiness from existing lab work. The wet-lab mouse data is the actual scientific test; the AI pipeline is the justification for choosing GDF15 to test first.

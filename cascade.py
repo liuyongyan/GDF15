@@ -4,9 +4,16 @@
 Cascade:
   L1 — Modality compatibility   : secreted + 60bp ≤ ORF ≤ 4500bp (saRNA payload)
   L2 — Disease evidence         : OT score ≥ 0.05 OR ≥1 GWAS hit OR ≥50 PubMed
+                                  L2 is *indication-parameterized*: the scope of
+                                  diseases/traits considered is set by the
+                                  --indication flag (default metabolic = all 4
+                                  conditions; obesity / t2d / mash narrow to a
+                                  single indication).
   L3 — Druggability             : protein_class ∈ {hormone, growth_factor,
                                   cytokine, peptide, neuropeptide} (signaling)
-  L4 — Opportunity ranking      : evidence / (1 + max_clinical_phase)
+  L4 — Opportunity ranking      : evidence / (1 + max_clinical_phase),
+                                  also indication-scoped (sums OT and counts
+                                  GWAS only over the chosen indication)
   L5 — Safety baseline (audit)  : confirms historical clinical failures (CETP,
                                   CNR1, HTR2C, DGAT1) are already excluded by
                                   upstream layers (vacuous-by-design for our
@@ -27,7 +34,9 @@ Data inputs (all under data/snapshots_real/ and data/raw_dumps/):
   - raw_dumps/chembl/chembl_metabolic_api_subset.tsv (ChEMBL REST by indication)
 
 Usage:
-    python3 cascade.py [--gene GENE]   # default: show top 30 + obesity-only top 30
+    python3 cascade.py                           # default --indication metabolic
+    python3 cascade.py --indication obesity      # obesity-scoped L2 + L4
+    python3 cascade.py --indication obesity --gene GDF15   # single-gene trace
 """
 from __future__ import annotations
 import argparse
@@ -61,6 +70,35 @@ L3_DRUGGABLE_CLASSES = {
 
 L4_PUBMED_WEIGHT = 0.1        # how much log10(pubmed+1) adds to evidence
 L4_GWAS_WEIGHT = 0.5          # bonus per GWAS hit (capped at 10)
+
+# Indication scopes for L2 evidence gating and L4 opportunity ranking.
+# Each scope defines (a) the Open Targets disease names that count toward
+# evidence and (b) the GWAS Catalog trait names that count toward GWAS hits.
+# 'use_pubmed': PubMed counts in our snapshot are metabolic-context aggregated
+# (across all 4 indications), so PubMed only meaningfully applies to the
+# 'metabolic' scope; for single-indication scopes it would over-count.
+INDICATION_SCOPES = {
+    'metabolic': {
+        'ot_diseases': {'obesity', 'type_2_diabetes', 'nafld', 'mash'},
+        'gwas_traits': None,    # None means "any metabolic GWAS trait"
+        'use_pubmed': True,
+    },
+    'obesity': {
+        'ot_diseases': {'obesity'},
+        'gwas_traits': {'bmi'},
+        'use_pubmed': False,
+    },
+    't2d': {
+        'ot_diseases': {'type_2_diabetes'},
+        'gwas_traits': {'type_2_diabetes', 'fasting_glucose', 'hba1c'},
+        'use_pubmed': False,
+    },
+    'mash': {
+        'ot_diseases': {'nafld', 'mash'},
+        'gwas_traits': {'mash', 'liver_fat_fraction', 'alt_levels'},
+        'use_pubmed': False,
+    },
+}
 
 # L5 — historical clinical-failure audit (confirmatory; not an active filter for
 # our modality because all four are non-secreted GPCRs/enzymes or non-signaling
@@ -208,14 +246,21 @@ def L1(gene: str, db) -> bool:
     return L1_MIN_ORF_BP <= orf <= L1_MAX_ORF_BP
 
 
-def L2(gene: str, db) -> bool:
-    """Disease evidence: OT, GWAS, or PubMed metabolic-context."""
+def L2(gene: str, db, scope) -> bool:
+    """Disease evidence within the chosen indication scope: OT, GWAS, or
+    (metabolic-scope-only) PubMed."""
     ot_scores = db['ot'].get(gene, {})
-    if ot_scores and max(ot_scores.values()) >= L2_MIN_OT_SCORE:
+    relevant_ot = [s for d, s in ot_scores.items() if d in scope['ot_diseases']]
+    if relevant_ot and max(relevant_ot) >= L2_MIN_OT_SCORE:
         return True
-    if gene in db['gwas']:
-        return True
-    if gene in db['lit']:
+    gene_traits = db['gwas'].get(gene, [])
+    if scope['gwas_traits'] is None:
+        if gene_traits:
+            return True
+    else:
+        if any(t in scope['gwas_traits'] for t in gene_traits):
+            return True
+    if scope['use_pubmed'] and gene in db['lit']:
         try:
             pm = int(db['lit'][gene].get('pubmed_count_metabolic', 0))
         except ValueError:
@@ -250,12 +295,21 @@ def L6(gene: str, db) -> bool:
     return gene not in L6_EXPERT_EXCLUSIONS
 
 
-def opportunity(gene: str, db) -> tuple[float, float, int, float, int, int]:
-    """Layer 4 ranking: evidence / (1 + max_clinical_phase)."""
-    ot_sum = sum(db['ot'].get(gene, {}).values())
-    gwas_n = len(db['gwas'].get(gene, []))
+def opportunity(gene: str, db, scope) -> tuple[float, float, int, float, int, int]:
+    """Layer 4 ranking: evidence / (1 + max_clinical_phase), indication-scoped.
+
+    Sums OT scores only over the scope's diseases; counts GWAS hits only
+    over the scope's traits; uses PubMed only when scope's use_pubmed is True.
+    """
+    ot_scores = db['ot'].get(gene, {})
+    ot_sum = sum(s for d, s in ot_scores.items() if d in scope['ot_diseases'])
+    gene_traits = db['gwas'].get(gene, [])
+    if scope['gwas_traits'] is None:
+        gwas_n = len(gene_traits)
+    else:
+        gwas_n = sum(1 for t in gene_traits if t in scope['gwas_traits'])
     pm = 0
-    if gene in db['lit']:
+    if scope['use_pubmed'] and gene in db['lit']:
         try:
             pm = int(db['lit'][gene].get('pubmed_count_metabolic', 0))
         except ValueError:
@@ -274,14 +328,25 @@ def opportunity(gene: str, db) -> tuple[float, float, int, float, int, int]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                   formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--indication", default="metabolic",
+                    choices=sorted(INDICATION_SCOPES.keys()),
+                    help="Indication scope for L2 evidence gating and L4 "
+                         "opportunity ranking (default: metabolic, all 4 "
+                         "indications combined).")
     ap.add_argument("--gene", default=None,
                     help="Show cascade trace for this gene only.")
     args = ap.parse_args()
 
+    scope = INDICATION_SCOPES[args.indication]
+    print(f"Indication scope: {args.indication}  "
+          f"(OT diseases: {sorted(scope['ot_diseases'])}, "
+          f"GWAS traits: {sorted(scope['gwas_traits']) if scope['gwas_traits'] else 'any metabolic'}, "
+          f"PubMed: {'used' if scope['use_pubmed'] else 'not used'})")
+
     db = load_data()
     universe = set(db['uniprot'].keys())
     l1 = {g for g in universe if L1(g, db)}
-    l2 = {g for g in l1 if L2(g, db)}
+    l2 = {g for g in l1 if L2(g, db, scope)}
     l3 = {g for g in l2 if L3(g, db)}
     l5 = {g for g in l3 if L5(g, db)}
     l6 = {g for g in l5 if L6(g, db)}
@@ -301,64 +366,42 @@ def main() -> int:
 
     admissible = l6
 
-    # Obesity-specific
-    obesity = set()
-    for g in admissible:
-        if db['ot'].get(g, {}).get('obesity', 0) >= L2_MIN_OT_SCORE:
-            obesity.add(g)
-        elif any(t == 'bmi' for t in db['gwas'].get(g, [])):
-            obesity.add(g)
-    print(f"Obesity-specific subset: {len(obesity)}")
-
     # Single-gene trace mode
     if args.gene:
         g = args.gene
-        print(f"\n=== Cascade trace for {g} ===")
-        for layer, name, fn in [(1, "modality (basic)", L1),
-                                  (2, "disease evidence", L2),
-                                  (3, "druggability", L3),
-                                  (5, "safety audit", L5),
-                                  (6, "expert deliverability", L6)]:
+        print(f"\n=== Cascade trace for {g} (indication={args.indication}) ===")
+        for layer, name, fn in [(1, "modality (basic)", lambda g, d: L1(g, d)),
+                                  (2, "disease evidence", lambda g, d: L2(g, d, scope)),
+                                  (3, "druggability", lambda g, d: L3(g, d)),
+                                  (5, "safety audit", lambda g, d: L5(g, d)),
+                                  (6, "expert deliverability", lambda g, d: L6(g, d))]:
             ok = fn(g, db)
             note = ""
             if layer == 6 and not ok:
                 note = f"  [{L6_EXPERT_EXCLUSIONS[g]}]"
             print(f"  L{layer} {name:<24}: {'✓ PASS' if ok else '✗ FAIL'}{note}")
         if g in admissible:
-            opp, ev, ph, ot_s, gw, pm = opportunity(g, db)
-            scored = sorted(admissible, key=lambda x: -opportunity(x, db)[0])
+            opp, ev, ph, ot_s, gw, pm = opportunity(g, db, scope)
+            scored = sorted(admissible, key=lambda x: -opportunity(x, db, scope)[0])
             rank_full = scored.index(g) + 1
-            scored_obes = sorted(obesity, key=lambda x: -opportunity(x, db)[0])
-            rank_obes = scored_obes.index(g) + 1 if g in obesity else None
             print(f"  L4 opportunity = {opp:.3f}")
-            print(f"  Full rank: #{rank_full} of {len(admissible)}")
-            if rank_obes:
-                print(f"  Obesity rank: #{rank_obes} of {len(obesity)}")
-            print(f"  Details: OT_sum={ot_s:.3f} GWAS={gw} PubMed_metabolic={pm} max_phase={ph}")
+            print(f"  Rank: #{rank_full} of {len(admissible)} ({args.indication}-scoped)")
+            pm_label = f"PubMed_metabolic={pm}" if scope['use_pubmed'] else "PubMed=n/a"
+            print(f"  Details: OT_sum={ot_s:.3f} GWAS={gw} {pm_label} max_phase={ph}")
         return 0
 
     # Full ranking output
-    scored = [(g, *opportunity(g, db)) for g in admissible]
+    scored = [(g, *opportunity(g, db, scope)) for g in admissible]
     scored.sort(key=lambda x: -x[1])
 
     print(f"\n{'='*100}")
-    print(f"TOP 30 — full cascade-admissible (by opportunity index)")
+    print(f"TOP 30 — cascade-admissible ({args.indication}-scoped, by opportunity index)")
     print(f"{'='*100}")
     print(f"{'#':<4} {'Gene':<12} {'Opp':>6} {'Evid':>5} {'Ph':>3} {'OTsum':>5} {'GWAS':>5} {'PubMed':>6} {'Class':<25}")
     for i, (g, opp, ev, ph, ot_s, gw, pm) in enumerate(scored[:30], 1):
         pc = db['uniprot'].get(g, {}).get('protein_class', '?')
-        print(f"{i:<4} {g:<12} {opp:>6.2f} {ev:>5.2f} {ph:>3} {ot_s:>5.2f} {gw:>5} {pm:>6} {pc:<25}")
-
-    scored_obes = sorted([(g, *opportunity(g, db)) for g in obesity], key=lambda x: -x[1])
-    print(f"\n{'='*100}")
-    print(f"TOP 30 — obesity-specific (OT obesity ≥ 0.05 OR ≥1 BMI GWAS hit)")
-    print(f"{'='*100}")
-    print(f"{'#':<4} {'Gene':<12} {'Opp':>6} {'OT_obes':>7} {'BMI_GWAS':>9} {'PubMed':>6} {'Class':<25}")
-    for i, (g, opp, ev, ph, ot_s, gw, pm) in enumerate(scored_obes[:30], 1):
-        pc = db['uniprot'].get(g, {}).get('protein_class', '?')
-        ot_obes = db['ot'].get(g, {}).get('obesity', 0)
-        bmi_n = sum(1 for t in db['gwas'].get(g, []) if t == 'bmi')
-        print(f"{i:<4} {g:<12} {opp:>6.2f} {ot_obes:>7.2f} {bmi_n:>9} {pm:>6} {pc:<25}")
+        pm_str = f"{pm:>6}" if scope['use_pubmed'] else f"{'n/a':>6}"
+        print(f"{i:<4} {g:<12} {opp:>6.2f} {ev:>5.2f} {ph:>3} {ot_s:>5.2f} {gw:>5} {pm_str} {pc:<25}")
 
     return 0
 
