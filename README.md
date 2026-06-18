@@ -7,7 +7,7 @@ genes.
 
 The work here is a **honest reckoning**: GDF15 is *not* the single
 objectively-top-ranked target produced by the data cascade. It is one of
-~239 cascade-admissible candidates (rank #38 overall, #28 in the obesity
+~219 cascade-admissible candidates (rank #26 overall, #18 in the obesity
 subset). The case for picking GDF15 first rests on three **cascade-external
 derisking signals** — a natural human knockout experiment (hyperemesis
 gravidarum), a fully characterized receptor (GFRAL), and an active Phase-1
@@ -41,9 +41,17 @@ python3 cascade.py --gene GDF15   # single-gene trace with rank
 Expected output (with current snapshots):
 
 ```
-Cascade: 19327 -> L1=1921 -> L2=852 -> L3=239 -> L5=239
-Obesity-specific subset: 128
+Cascade: 19327 -> L1=1921 -> L2=852 -> L3=239 -> L5=239 -> L6=219
+Obesity-specific subset: 112
 ```
+
+The six layers are: L1 modality compatibility, L2 disease evidence,
+L3 druggability (signaling classes only), L4 opportunity index (ranking,
+not filter), L5 historical safety audit (vacuous for our modality —
+itself a finding), L6 expert deliverability curation (catches short
+half-life, prohormone processing, obligate heterodimer, and UniProt
+misclassification — failure modes not captured by L1's coarse structural
+check).
 
 ## What is not in this repo
 
