@@ -6,7 +6,7 @@
 
 **Project**: Self-amplifying RNA + sublingual microneedle delivery of a secreted endocrine factor for obesity, type 2 diabetes, and metabolic-associated steatohepatitis (MASH).
 
-**Document version**: 2026-06-18 (revised with Layer 5 expert deliverability curation, indication-parameterized L2/L6, and gate-then-rank layer ordering). All numbers below derive from the cascade applied to fully real public data (Open Targets 26.03, NHGRI-EBI GWAS Catalog latest, UniProt SwissProt human reviewed, ChEMBL via REST API by indication, PubMed E-utilities literature counts) plus a hand-curated 23-gene exclusion list for deliverability failure modes that public databases do not cover.
+**Document version**: 2026-06-21 (adds a data-driven Layer 5 "translational cargo suitability" gate before the expert-deliverability layer, renumbering the cascade to seven layers; the former expert-deliverability and opportunity-ranking layers become L6 and L7). All numbers below derive from the cascade applied to fully real public data (Open Targets 26.03, NHGRI-EBI GWAS Catalog latest, UniProt SwissProt human reviewed, ChEMBL via REST API by indication, PubMed E-utilities literature counts, Human Protein Atlas tissue/secretome data, OmniPath ligand-receptor edges, and Allen Mouse Brain ISH) plus a hand-curated 23-gene exclusion list (L6) for deliverability failure modes that public databases do not cover, and one citable constant (the circumventricular-organ structure list used by L5).
 
 ---
 
@@ -66,9 +66,9 @@ The selection has to consider multiple dimensions at once: **what the disease bi
 
 ---
 
-## 4. The pipeline: a six-layer constraint cascade
+## 4. The pipeline: a seven-layer constraint cascade
 
-We assembled what we call a **target cascade**. Starting from the full set of ~20,000 reviewed human protein-coding genes, the pipeline applies six sequential layers. The first five (L1 through L5) are **boolean gates**: a candidate either passes each filter or it does not. The sixth (L6) is the **ranker**: it does not filter the admissible set, only orders it by an opportunity index. The execution order matches the layer numbering — gates run first, then the surviving candidates are ranked.
+We assembled what we call a **target cascade**. Starting from the full set of ~20,000 reviewed human protein-coding genes, the pipeline applies seven sequential layers. The first six (L1 through L6) are **boolean gates**: a candidate either passes each filter or it does not. The seventh (L7) is the **ranker**: it does not filter the admissible set, only orders it by an opportunity index. The execution order matches the layer numbering — gates run first, then the surviving candidates are ranked.
 
 **Data sources by layer**:
 
@@ -78,8 +78,9 @@ We assembled what we call a **target cascade**. Starting from the full set of ~2
 | L2 | gate | Open Targets Platform v26.03 (disease association scores) + NHGRI-EBI GWAS Catalog (genome-wide-significant hits) + NCBI PubMed via E-utilities (literature counts; metabolic scope only) |
 | L3 | gate | UniProt SwissProt `protein_class` annotation (signaling-class taxonomy) |
 | L4 | gate | Hand-curated 4-target list from the public clinical-development record (CETP, CNR1, HTR2C, DGAT1) |
-| L5 | gate | Hand-curated 23-gene list with per-failure-mode tags, written out in `cascade.py` (no structured DB source — see §4 Layer 5 for the known-limitation discussion) |
-| L6 | rank | ChEMBL REST API queried by MeSH indication (compound-level `max_phase`) augmented with ChEMBL molecule-endpoint `withdrawn_flag` overlay; evidence numerator reuses L2's OT + GWAS + PubMed |
+| L5 | gate | **Data-driven**: OmniPath ligand-receptor edges (cognate receptor) + Human Protein Atlas `proteinatlas.tsv` (secretome location, tissue specificity) + Allen Mouse Brain ISH (circumventricular-organ localization of brain-restricted receptors). One citable constant: the CVO structure list (Gross & Weindl 1987). Snapshot at `data/snapshots_real/translational_cargo_suitability.tsv`, built by `data/etl/etl_translational_suitability.py` |
+| L6 | gate | Hand-curated 23-gene list with per-failure-mode tags, written out in `cascade.py` (no structured DB source — see §4 Layer 6 for the known-limitation discussion) |
+| L7 | rank | ChEMBL REST API queried by MeSH indication (compound-level `max_phase`) augmented with ChEMBL molecule-endpoint `withdrawn_flag` overlay; evidence numerator reuses L2's OT + GWAS + PubMed |
 
 ### Layer 1 — Modality compatibility
 
@@ -105,7 +106,7 @@ A modality-compatible protein is not worth pursuing if there is no evidence conn
 - At least one genome-wide-significant GWAS hit (p < 5×10⁻⁸) in the NHGRI-EBI GWAS Catalog for a trait in scope.
 - (In broad-metabolic scope only:) a substantial body of indexed PubMed literature (≥ 50 publications) connecting the gene to metabolic context.
 
-**Layer 2 is indication-parameterized.** The cascade takes an `--indication` flag that sets the disease/trait scope, and the same flag also controls the L6 opportunity scoring (so the gate and the ranker stay consistent). The supported scopes are:
+**Layer 2 is indication-parameterized.** The cascade takes an `--indication` flag that sets the disease/trait scope, and the same flag also controls the L7 opportunity scoring (so the gate and the ranker stay consistent). The supported scopes are:
 
 | Scope | OT diseases | GWAS traits | PubMed |
 |---|---|---|---|
@@ -151,9 +152,28 @@ The vacuity is itself a finding worth recording. The chemistries that produced m
 
 **Layer 4 result**: **239** candidates retained (0 excluded by audit; 0 excluded by audit *because* L1+L3 already covered all four historical failures).
 
-### Layer 5 — Expert deliverability curation
+### Layer 5 — Translational cargo suitability (data-driven)
 
-Layer 1's modality filter is a coarse, structural check: secreted plus an ORF that fits the saRNA payload. It is not sufficient on its own. There are at least four failure modes that make a structurally-modality-compatible protein actually un-deliverable in practice, none of which are recorded in any of our five public databases. We add Layer 5 as a manual, audit-trailed expert curation step. Each excluded gene is annotated with one of four failure-mode tags.
+Layer 1 only checks *structural* modality compatibility (secreted + ORF size). It does not check whether the protein actually works as a **systemically-delivered endocrine drug**: a saRNA-encoded protein is made locally, dumped into the bloodstream, and must then act on a target reachable from the blood. Layer 5 enforces that, and — unlike the expert layer that follows — it is built entirely from public data plus one citable anatomical constant. A candidate passes only if **all four** of the following hold:
+
+- **C1a — secreted into blood (endocrine, not local).** The ligand must be a circulating endocrine signal, not an autocrine/paracrine factor that acts only on its neighbours. *Data*: Human Protein Atlas `Secretome location` = "Secreted to blood".
+- **C1b — cognate receptor reachable from the blood.** Either the receptor is expressed in a peripheral tissue (HPA tissue expression), *or* — for a receptor confined to the brain — it sits in a **circumventricular organ** (area postrema, NTS, median eminence, subfornical organ, OVLT), the small brain regions whose capillaries lack a blood-brain barrier. This second branch is what correctly admits GFRAL: it is below the detection limit of bulk RNA atlases, so we use **Allen Mouse Brain ISH**, which localizes it to the area postrema / nucleus of the solitary tract (expression energy ~30–60× higher there than in behind-the-barrier hypothalamus). The list of which structures count as circumventricular is the one hand-entered constant (Gross & Weindl 1987).
+- **C2i — a well-characterized cognate receptor exists.** *Data*: the ligand has a curated receptor edge in OmniPath (which aggregates Guide to PHARMACOLOGY, connectomeDB2020, CellTalkDB, and others). Where a ligand maps to several receptors, we take the one with the most curated sources — e.g. GDF15 → GFRAL (6 sources) over the legacy GDF15 → TGFBR2 (1 source).
+- **C2ii — the receptor is anatomically restricted.** A receptor expressed all over the body means a systemically-dosed ligand would act everywhere, which is exactly the chronic-exposure liability we want to avoid. *Data*: HPA `RNA tissue specificity` ∈ {tissue enriched, group enriched}. The broader "tissue enhanced" and "low tissue specificity" categories — which by HPA's own definition mean expression spread across many tissues — do **not** count as restricted. This is the threshold that removes the broadly-acting growth-factor and cytokine receptors (e.g. BDNF's NTRK2, NRG1's ERBB3) while retaining the truly focused ones.
+
+Only **2** of the candidate receptors are below HPA bulk detection or otherwise brain-restricted enough to require the Allen step (GFRAL and PROKR2); of those, only GFRAL is enriched in a circumventricular organ, so only GFRAL is rescued. Everything else is decided directly from HPA + OmniPath.
+
+This is a deliberately conservative gate, and it is *not* a clean "obesity-relevant" filter — some surviving receptors are restricted and blood-accessible yet mediate central or reproductive effects (the receptor-location data cannot encode *which* site produces the weight effect). It should be read as "is this a deliverable systemic-endocrine cargo at all," with disease relevance still carried by L2 and the final ranking by L7.
+
+**A note on threshold sensitivity (important).** The C2ii cut is load-bearing. With the strict definition used here (enriched + group enriched), GDF15 ranks **#1 of 14** in the obesity scope. If "tissue enhanced" is also counted as restricted, the gate balloons (BDNF, IL34, CALCB, HBEGF re-enter) and GDF15 falls to **#6 of 52**. We use the strict cut because it matches HPA's own category semantics — "enhanced" means broadly expressed — not because it favours GDF15; but the dependence is real and stated.
+
+**Data sources**: OmniPath ligand-receptor interactions (REST API); Human Protein Atlas `proteinatlas.tsv` (secretome location + tissue specificity); Allen Mouse Brain Atlas ISH (`api.brain-map.org`, expression energy by structure). Computed into `data/snapshots_real/translational_cargo_suitability.tsv` (one row per candidate, all four flags + the Allen evidence values) by `data/etl/etl_translational_suitability.py`. The cascade reads the snapshot; only the CVO structure list is hand-entered.
+
+**Layer 5 result**: **29** retained in the metabolic scope (210-candidate snapshot universe; obesity scope **17**, t2d **19**, mash **9**). This is the cascade's sharpest narrowing — it is also where GDF15 goes from "admissible but mid-pack" to "top of the deliverable set," and where the higher-evidence-but-undeliverable candidates (BDNF, NRG1) drop out.
+
+### Layer 6 — Expert deliverability curation
+
+Layers 1–5 leave a set that is modality-compatible, disease-linked, druggable, and a deliverable systemic-endocrine cargo. There remain at least four failure modes that make a candidate un-deliverable in practice, none of which are captured by the structured databases above. We add Layer 6 as a manual, audit-trailed expert curation step. Each excluded gene is annotated with one of four failure-mode tags.
 
 **(a) Native plasma half-life too short for saRNA-sustained therapy.** saRNA delivers steady-state expression of a protein over days. If the protein's intrinsic plasma half-life is on the order of minutes, the steady-state circulating concentration cannot reach the therapeutic window regardless of the expression rate. Every existing clinical-stage drug against these targets uses a chemically-modified analog — Fc-fusion, lipidation, or PEGylation — that the saRNA modality cannot encode. The genes excluded under this mode are **FGF21** (native human plasma t½ ~30 min; all clinical programs use Fc-fusion), **CCK**, **PYY**, **GIP**, **GCG** (the glucagon/GLP-1 locus), and **GHRL** (ghrelin) — every native incretin or gut-peptide hormone with native t½ in the minutes range. This is the same wall that prevents native GLP-1 from being a viable saRNA cargo.
 
@@ -165,13 +185,13 @@ Layer 1's modality filter is a coarse, structural check: secreted plus an ORF th
 
 This layer is explicitly a *human/expert annotation* layer, not a database-derived filter. Its scope (the specific genes excluded and the failure-mode tag attached to each) is fully written out in the cascade source code so that any candidate's exclusion can be audited and challenged. We treat this as a known limitation of the methodology: the four failure modes above would, in principle, be capturable from structured databases (UniProt half-life annotations, prohormone-processing databases, complex-portal heterodimer annotations) if the right curated sources existed at sufficient coverage. They presently do not.
 
-**Data source**: Hand-curated 23-gene list with per-failure-mode tags (`short_half_life`, `prohormone_processing`, `heterodimer_required`, `misclassified_secreted`), written out as `L5_EXPERT_EXCLUSIONS` in `cascade.py`. No structured public database — see the known-limitation discussion above.
+**Data source**: Hand-curated 23-gene list with per-failure-mode tags (`short_half_life`, `prohormone_processing`, `heterodimer_required`, `misclassified_secreted`), written out as `L6_EXPERT_EXCLUSIONS` in `cascade.py`. No structured public database — see the known-limitation discussion above.
 
-**Layer 5 result** *(metabolic scope)*: **219** final admissible candidates (20 excluded from the L4 set of 239: 6 short-half-life, 6 prohormone-processing, 5 heterodimer-required, 3 misclassified-secreted). *(obesity scope: **112** final admissible; t2d: 121; mash: 83.)*
+**Layer 6 result** *(metabolic scope)*: **26** final admissible candidates (3 excluded from the L5 set of 29: CCK and GHRL for short half-life, HMGB1 as misclassified-secreted). *(obesity scope: **14** final admissible; t2d: 17; mash: 7.)* Notably, most of the 23-gene expert list is now **redundant**: with the data-driven Layer 5 running first, all but those three genes are already removed upstream (their receptors are not blood-accessible, not restricted, or the protein is not secreted-to-blood). The expert layer has become nearly as vacuous as the Layer 4 safety audit — itself a finding: the deliverability failure modes we originally hand-curated are, for the most part, now caught by data.
 
-### Layer 6 — Opportunity ranking (the final step)
+### Layer 7 — Opportunity ranking (the final step)
 
-Layers 1-5 are all boolean gates: a candidate either passes or it does not. Layer 6 is qualitatively different — it does not filter, it ranks the admissible set. We compute an **opportunity index** for each surviving candidate:
+Layers 1-6 are all boolean gates: a candidate either passes or it does not. Layer 7 is qualitatively different — it does not filter, it ranks the admissible set. We compute an **opportunity index** for each surviving candidate:
 
 ```
 opportunity = evidence_strength / (1 + max_clinical_phase)
@@ -179,11 +199,11 @@ opportunity = evidence_strength / (1 + max_clinical_phase)
 
 The numerator captures aggregate biological support (OT scores summed across the indication's diseases, GWAS hit count over the indication's traits, log-scaled literature density where applicable). The denominator penalizes targets that are already heavily invested in industrially — a target with a Phase 3 program is much less of an *opportunity* for academic discovery than a target with equally strong evidence and no Phase 2 program. This deliberately steers the ranking toward **underdeveloped high-evidence opportunities** rather than rediscovering targets that pharma is already actively developing.
 
-Layer 6 is *indication-scoped in lockstep with Layer 2*: when the cascade is run with `--indication obesity`, both the L2 evidence gate and the L6 opportunity ranker restrict to obesity evidence only. This keeps gate and ranker consistent and prevents a candidate from being "boosted" by evidence in indications it was not gated on.
+Layer 7 is *indication-scoped in lockstep with Layer 2*: when the cascade is run with `--indication obesity`, both the L2 evidence gate and the L7 opportunity ranker restrict to obesity evidence only. This keeps gate and ranker consistent and prevents a candidate from being "boosted" by evidence in indications it was not gated on.
 
-The honest scope of what Layer 6 produces is *a ranking, not a discovery*. The opportunity formula uses hand-set weights (GWAS bonus of 0.5 per hit capped at 10, PubMed log-density coefficient of 0.1) that have not been calibrated against any ground-truth outcome dataset. Rankings near the top should be read as a *tier* rather than a precise ordering: candidates within the top decile of the obesity-scoped shortlist should all be regarded as defensible cargos, with the choice among them determined by additional information beyond the cascade.
+The honest scope of what Layer 7 produces is *a ranking, not a discovery*. The opportunity formula uses hand-set weights (GWAS bonus of 0.5 per hit capped at 10, PubMed log-density coefficient of 0.1) that have not been calibrated against any ground-truth outcome dataset. Rankings near the top should be read as a *tier* rather than a precise ordering: candidates near the top of the obesity-scoped shortlist should all be regarded as defensible cargos, with the choice among them determined by additional information beyond the cascade.
 
-**Two phase-penalty corrections** are applied to make the L6 denominator reflect *crowded active development* rather than just "highest clinical phase ever reached":
+**Two phase-penalty corrections** are applied to make the L7 denominator reflect *crowded active development* rather than just "highest clinical phase ever reached":
 
 1. **Indication-scoped phase**: ChEMBL `max_phase` is recorded per (compound, indication). The original cascade collapsed across all 9 queried indication tags (obesity, T2D, MASH, NAFLD, cardiovascular, heart failure, dyslipidemia, cachexia, muscle wasting) by taking the gene-wise maximum. This wrongly penalized targets whose only clinical advancement was in an off-direction indication — e.g. TNF Phase 3 trials are for *cachexia* (excess weight loss in cancer), the opposite of obesity, yet TNF's obesity-scoped opportunity was being divided by `(1 + 3) = 4`. The corrected logic counts a ChEMBL row only if its indication matches the cascade's `--indication` scope. Under `--indication obesity`, TNF / IL6 / IL1A / IL1B all revert to effective phase 0 (their Phase 2-3 advancement was for cachexia or T2D, not obesity); only MSTN retains its obesity-row Phase 2 (bimagrumab, anti-ActRII), which is genuinely an active obesity competitor.
 
@@ -196,48 +216,45 @@ The honest scope of what Layer 6 produces is *a ranking, not a discovery*. The o
 
 ### Implementation notes
 
-The first five cascade layers are implemented entirely in target-blind code — no gene symbol of interest is hard-coded as a filter or as a special case. Layer 6 is necessarily target-specific (it is a curated exclusion list), but each entry carries an explicit failure-mode tag in source code, and the inclusion/exclusion of any given gene can be traced. The full implementation has been run against current Open Targets (version 26.03), GWAS Catalog (latest), ChEMBL (via REST API), UniProt (SwissProt human reviewed), and PubMed (via NCBI E-utilities for 1,918 modality-compatible candidate genes).
+Layers 1–5 are implemented entirely in target-blind code — no gene symbol of interest is hard-coded as a filter or as a special case (Layer 5 reads a data-derived snapshot; its only hand-entered input is the circumventricular-organ structure list, which is anatomical, not target-specific). Layer 6 is necessarily target-specific (it is a curated exclusion list), but each entry carries an explicit failure-mode tag in source code, and the inclusion/exclusion of any given gene can be traced. The full implementation has been run against current Open Targets (version 26.03), GWAS Catalog (latest), ChEMBL (via REST API), UniProt (SwissProt human reviewed), PubMed (via NCBI E-utilities for 1,918 modality-compatible candidate genes), Human Protein Atlas, OmniPath, and the Allen Mouse Brain Atlas.
 
 ---
 
 ## 5. The obesity-scoped shortlist
 
-For this paper's primary indication of chronic weight management, we run the cascade with `--indication obesity`, which restricts Layer 2's disease scope to the obesity term and the BMI GWAS trait, and restricts Layer 4's opportunity scoring to the same. This is the indication-specialized instance of the same six-layer cascade described in §4 — not a separate post-cascade narrowing step.
+For this paper's primary indication of chronic weight management, we run the cascade with `--indication obesity`, which restricts Layer 2's disease scope to the obesity term and the BMI GWAS trait, and restricts Layer 7's opportunity scoring to the same. This is the indication-specialized instance of the same seven-layer cascade described in §4 — not a separate post-cascade narrowing step.
 
-**Obesity-scoped final shortlist**: **112** candidates. Cascade chain: 19,327 → L1=1,921 → L2=426 → L3=128 → L4=128 → L5=112, then L6 ranks those 112.
+**Obesity-scoped final shortlist**: **14** candidates. Cascade chain: 19,327 → L1=1,921 → L2=426 → L3=128 → L4=128 → L5=17 → L6=14, then L7 ranks those 14.
 
-### Top 20 of the obesity-scoped L6 ranking
+### The obesity-scoped L7 ranking (all 14)
 
 | Rank | Gene | Opp. score | OT obesity | BMI GWAS | Max phase | Protein class |
 |---:|---|---:|---:|---:|---:|---|
-|  1  | BDNF      | 5.61 | 0.61 | 12 | 0 | secreted_growth_factor |
-|  2  | NRG1      | 3.70 | 0.20 |  7 | 0 | secreted_growth_factor |
-|  3  | BMP8A     | 1.07 | 0.07 |  2 | 0 | secreted_growth_factor |
-|  4  | IL34      | 1.01 | 0.01 |  2 | 0 | secreted_growth_factor |
-|  5  | CALCB     | 1.00 | 0.00 |  2 | 0 | secreted_hormone |
-|  6  | TAFA5     | 0.87 | 0.37 |  1 | 0 | secreted_cytokine |
-|  7  | FGF5      | 0.86 | 0.36 |  1 | 0 | secreted_growth_factor |
-|  8  | HBEGF     | 0.73 | 0.23 |  1 | 0 | secreted_growth_factor |
-|  9  | ALKAL2    | 0.71 | 0.21 |  1 | 0 | secreted_cytokine |
-| **10** | **→ GDF15 ←** | **0.62** | **0.12** | **1** | **0** | **secreted_hormone** |
-| 11  | BMP7      | 0.56 | 0.06 |  1 | 0 | secreted_growth_factor |
-| 12  | PNOC      | 0.53 | 0.03 |  1 | 0 | secreted_neuropeptide |
-| 13  | GNRH2     | 0.52 | 0.02 |  1 | 0 | secreted_hormone |
-| 14  | CCL28     | 0.51 | 0.01 |  1 | 0 | secreted_cytokine |
-| 15  | MLN       | 0.51 | 0.01 |  1 | 0 | secreted_hormone |
-| 16  | EFEMP1    | 0.51 | 0.01 |  1 | 0 | secreted_growth_factor |
-| 17  | PDGFC     | 0.51 | 0.01 |  1 | 0 | secreted_growth_factor |
-| 18  | IL17B     | 0.50 | 0.00 |  1 | 0 | secreted_cytokine |
-| 19  | GDNF      | 0.35 | 0.35 |  0 | 0 | secreted_growth_factor |
-| 20  | ADCYAP1   | 0.31 | 0.31 |  0 | 0 | secreted_hormone |
+| **1** | **→ GDF15 ←** | **0.62** | **0.12** | **1** | **0** | **secreted_hormone** |
+|  2  | PNOC      | 0.53 | 0.03 |  1 | 0 | secreted_neuropeptide |
+|  3  | GNRH2     | 0.52 | 0.02 |  1 | 0 | secreted_hormone |
+|  4  | IL17B     | 0.50 | 0.00 |  1 | 0 | secreted_cytokine |
+|  5  | FSHB      | 0.19 | 0.19 |  0 | 0 | secreted_hormone |
+|  6  | CRH       | 0.16 | 0.16 |  0 | 0 | secreted_hormone |
+|  7  | OXT       | 0.11 | 0.11 |  0 | 0 | secreted_hormone |
+|  8  | IL33      | 0.10 | 0.10 |  0 | 0 | secreted_cytokine |
+|  9  | IL22      | 0.08 | 0.08 |  0 | 0 | secreted_cytokine |
+| 10  | PTN       | 0.07 | 0.07 |  0 | 0 | secreted_growth_factor |
+| 11  | RETN      | 0.07 | 0.07 |  0 | 0 | secreted_hormone |
+| 12  | TNFSF13B  | 0.06 | 0.06 |  0 | 0 | secreted_cytokine |
+| 13  | IL25      | 0.06 | 0.06 |  0 | 0 | secreted_cytokine |
+| 14  | GNRH1     | 0.06 | 0.06 |  0 | 0 | secreted_hormone |
 
-*(Reproducible via `python3 cascade.py --indication obesity`. Full 112-candidate ranking and per-gene cascade trace available in the same command output.)*
+*(Reproducible via `python3 cascade.py --indication obesity`. Per-gene cascade trace via `--gene <SYMBOL>`.)*
 
-The top of this ranking is dominated by signaling growth factors with strong BMI GWAS support: BDNF (12 BMI-significant GWAS hits), NRG1 (7 BMI hits), BMP8A (a brown-fat thermogenesis regulator), interleukin-34, and calcitonin gene-related peptide β (CALCB). The middle tier (positions 6-20) consists mostly of signaling proteins with one BMI GWAS hit plus moderate Open Targets obesity scores: TAFA5, FGF5, HBEGF, ALKAL2, GDF15, BMP7, the prepronociceptin neuropeptide PNOC, MLN (motilin), and others. The remainder of the 112-candidate list contains additional well-known metabolic signaling proteins not visible in the top 20 — adiponectin (ADIPOQ), GDNF, neuregulin-4 (NRG4, a brown-adipose batokine), klotho (KL), interleukin-10, resistin (RETN), the irisin precursor FNDC5 — with progressively weaker obesity-specific evidence.
+By obesity-scoped opportunity score, GDF15 now ranks **#1 of 14**. This is a real change from the earlier six-layer cascade, and it is worth being precise about *why* it happened, because the honesty of the result depends on it:
 
-By obesity-scoped opportunity score, GDF15 ranks **#10 of 112**. It places in the top decile of the obesity-scoped shortlist. It is not the single mathematically highest-scoring target; we do not claim it is. The top of the opportunity-ranked list (BDNF, NRG1, BMP8A, IL34, CALCB) are also defensible cargos and represent natural candidates for subsequent validation studies of the same delivery platform.
+- **The candidates that used to outrank GDF15 are gone because they are not deliverable.** In the pre-L5 cascade the top of the list was BDNF (5.61), NRG1 (3.70), BMP8A, IL34, CALCB — all signaling growth factors or cytokines with strong BMI GWAS support. Layer 5 removes them on data: BDNF's receptor NTRK2 and NRG1's ERBB3 are not anatomically restricted (broadly expressed, "tissue enhanced"/"low specificity"), and BDNF's weight-relevant action is behind the blood-brain barrier. These are *legitimate* removals — those proteins genuinely cannot be delivered as systemic-endocrine cargos by our platform — but the consequence is that GDF15's #1 is "**first among deliverable targets**," not "first by raw biological evidence."
+- **GDF15 only survives Layer 5 because of the Allen-ISH rescue.** Its receptor GFRAL is below the detection limit of bulk RNA atlases; a naive data version of L5 *excludes* GDF15. It passes only because Allen Mouse Brain ISH localizes GFRAL to the area postrema, a blood-accessible circumventricular organ.
+- **The ranking among the 14 is dominated by L2 evidence, and the survivor set is biologically mixed.** GDF15 leads because its obesity Open Targets score plus a BMI GWAS hit give it the highest opportunity value among the survivors; the rest are central neuropeptides (PNOC), reproductive hormones (GNRH1/2, FSHB), stress/neurohypophyseal hormones (CRH, OXT), and immune cytokines (IL17B, IL33, IL22, IL25, TNFSF13B). Several of these pass L5 only because their receptors happen to be restricted and blood-accessible, even though their primary physiology is not anti-obesity — the receptor-location data cannot encode site-of-action. So **#1 of 14 should be read as "top of the data-admissible deliverable tier," not "the algorithm discovered GDF15 is the best obesity target."**
+- **The result is threshold-sensitive** (see §4 Layer 5): under a looser receptor-specificity cut GDF15 is #6 of 52. We use the stricter, HPA-definition-consistent cut.
 
-Two categories of well-known metabolic hormones are conspicuously absent from this shortlist relative to a naïve cascade output: the gut/pancreatic peptide hormones (CCK, PYY, GIP, GCG/GLP-1, ghrelin, insulin) and the hypothalamic prohormones (POMC, PCSK1N, NPY). Their absence is not an oversight — these are exactly the targets excluded by Layer 5's deliverability curation (short native half-life, or required PC1/2 cleavage). They are pharmacologically interesting in other modalities (chemically-modified peptide drugs, gene therapy to neuroendocrine cells), but they are not deliverable as cargos by our platform.
+Two categories of well-known metabolic hormones are conspicuously absent from this shortlist relative to a naïve cascade output: the gut/pancreatic peptide hormones (CCK, PYY, GIP, GCG/GLP-1, ghrelin, insulin) and the hypothalamic prohormones (POMC, NPY). Their absence is not an oversight — they are removed by Layer 5 (receptor not restricted/blood-accessible, or ligand not secreted-to-blood) or Layer 6 (short native half-life, required PC1/2 cleavage). They are pharmacologically interesting in other modalities (chemically-modified peptide drugs, gene therapy to neuroendocrine cells), but they are not deliverable as cargos by our platform.
 
 ---
 
@@ -249,7 +266,7 @@ The cascade ranking is one input to a target-selection decision but not the only
 
 In 2024, a multi-institution study published in *Nature* (Fejzo et al.) established that the severe nausea and weight loss of hyperemesis gravidarum during pregnancy is caused by **elevated endogenous GDF15** acting on its receptor in the hindbrain. This is, in effect, an unintentional human dose-response study: when a woman's GDF15 levels rise during early pregnancy, she experiences sustained anorexia and significant body weight loss. The effect is dramatic, well-documented across thousands of patients, and unambiguous about the direction of causation.
 
-No other candidate on our obesity shortlist has this strength of *human in-vivo* evidence. BDNF, NRG1, BMP8A, IL34, and other top-cascade candidates rely on rodent models or genetic association markers — both of which are weaker forms of causal evidence than what hyperemesis gravidarum provides for GDF15. This is an important asymmetry, and the cascade cannot capture it because no public structured database encodes "endogenous level of this protein produces this body composition change in humans."
+No other candidate — neither those remaining on our 14-gene shortlist nor the higher-evidence proteins that Layer 5 removed as undeliverable (BDNF, NRG1, BMP8A, IL34) — has this strength of *human in-vivo* evidence. They rely on rodent models or genetic association markers, both of which are weaker forms of causal evidence than what hyperemesis gravidarum provides for GDF15. This is an important asymmetry, and the cascade cannot capture it because no public structured database encodes "endogenous level of this protein produces this body composition change in humans."
 
 ### A receptor characterized in 2017
 
@@ -257,7 +274,7 @@ The receptor through which GDF15 acts (GFRAL) was identified in 2017 by three in
 
 This anatomical specificity has two practical implications. First, systemic GDF15 produced from our sublingual platform will reach all tissues but will only act through this restricted neural circuit, limiting off-target effects compared to receptors that are widely expressed. Second, the side effect profile is *predictable*: the area postrema is also the brain's nausea-control center, so the expected adverse effect is nausea — the same side effect as GLP-1, mediated through a different pathway. We are not committing to a target whose adverse event profile will surprise us in Phase 1.
 
-By contrast, several other cascade-top candidates have less mature receptor pharmacology. The receptor mechanism for BMP8A's brown-fat effect remains debated. NRG1's metabolic effect is mediated through ErbB-family receptors that are broadly expressed across tissues, making target-organ selectivity harder. ALKAL2 acts through ALK, a receptor tyrosine kinase whose chronic agonism carries oncogenic concern. Choosing a target with a well-characterized, anatomically-restricted receptor reduces translational risk.
+By contrast, several of the proteins that outscored GDF15 *before* the Layer 5 deliverability filter have less mature or broader receptor pharmacology — and that breadth is precisely why Layer 5 removed them. The receptor mechanism for BMP8A's brown-fat effect remains debated. NRG1's metabolic effect is mediated through ErbB-family receptors that are broadly expressed across tissues, making target-organ selectivity harder (NRG1 fails L5 on exactly this — ERBB3 is not a restricted receptor). ALKAL2 acts through ALK, a receptor tyrosine kinase whose chronic agonism carries oncogenic concern. GDF15's well-characterized, anatomically-restricted GFRAL is the opposite profile, and it is what lets GDF15 pass the same Layer 5 gate that screens those candidates out.
 
 ### Industry derisking via NGM120
 
@@ -273,8 +290,8 @@ Because we are taking pains to frame this honestly, it is worth stating explicit
 
 - **We are not claiming GDF15 is mechanistically superior to GLP-1 for weight loss.** The semaglutide-tirzepatide-retatrutide trajectory has set a very high efficacy bar. GDF15-pathway agonists have not yet demonstrated comparable Phase 3 outcomes in obesity.
 - **We are not claiming GDF15 will have fewer side effects than GLP-1.** Both pathways converge on the same anatomical nausea center. The side effect profile may turn out to be similar.
-- **We are not claiming GDF15 is the only worthwhile cargo for our platform.** The cascade explicitly identifies BDNF, BMP8A, INHBE, and several other secreted proteins as defensible alternative cargos. Future studies should validate the platform with these as well.
-- **We are not claiming the AI pipeline "discovered" GDF15.** It identified GDF15 as one of 112 admissible obesity-relevant signaling-protein candidates that are also genuinely deliverable by our platform, ranked #10 by L6 obesity-scoped opportunity score (top decile). The selection of GDF15 specifically was made by combining cascade admissibility with three cascade-external derisking signals — a decision that human investigators made transparently rather than one that an algorithm produced.
+- **We are not claiming GDF15 is the only worthwhile cargo for our platform.** High-evidence proteins like BDNF and NRG1 are biologically interesting but were screened out by Layer 5 as undeliverable by *this* modality (BBB-restricted or broadly-expressed receptors); they could be revisited if the platform adds blood-brain-barrier transit or multi-cistronic constructs. Among deliverable candidates, the cascade's other admissible cargos and the broader-scope shortlists (t2d, mash) offer further targets to validate.
+- **We are not claiming the AI pipeline "discovered" GDF15.** With the data-driven Layer 5 deliverability gate in place, GDF15 is the top-ranked (#1 of 14) obesity-scoped candidate — but, as §5 sets out in detail, that #1 is "first among *deliverable* targets," it depends on an Allen-ISH rescue of the otherwise-undetectable GFRAL receptor, it is sensitive to the Layer 5 receptor-specificity threshold (#6 of 52 under a looser cut), and the surviving set is biologically mixed. The selection of GDF15 specifically was made by combining cascade admissibility with three cascade-external derisking signals — a decision that human investigators made transparently rather than one that an algorithm produced.
 
 What we *are* claiming is methodological: that the modality-constrained constraint cascade is a systematic, auditable framework for narrowing a high-dimensional target selection problem down to a defensible shortlist, and that GDF15 belongs in that shortlist for principled reasons.
 
@@ -288,13 +305,13 @@ The immediate next steps are:
 
 1. **Complete the cargo characterization in mouse models**: full pharmacokinetics of GDF15 expression after sublingual dosing; weight loss kinetics; body composition (DXA or NMR) to distinguish fat-mass from lean-mass change; glycemic control (oral glucose tolerance); hepatic steatosis improvement (histology and magnetic resonance spectroscopy); behavioral and tissue-level safety assessment.
 2. **Comparator studies**: head-to-head comparison with semaglutide and (where feasible) with a GLP-1-Fc fusion delivered by the same saRNA-microneedle platform, to separate the contribution of the cargo from the contribution of the delivery modality.
-3. **Platform expansion**: applying the same cascade and the same delivery platform to a second cargo from the obesity-scoped shortlist. The natural candidates are BDNF (top-ranked, although blood-brain-barrier transit historically limited its development; saRNA-driven systemic production may circumvent this), NRG1 (the #2 candidate on the obesity-scoped shortlist with 7 BMI GWAS hits), BMP8A (brown-fat thermogenesis regulator with strong rodent precedent), and NRG4 (brown-adipose batokine). Note that the well-known appetite-regulating gut peptides (CCK, PYY, GIP) are *not* on this expansion list because Layer 5 of the cascade excludes them on deliverability grounds (native plasma half-life too short, and in the case of PYY also requiring prohormone cleavage). A second cargo validation would convert the project from a single-target study into a delivery-platform study, which is a stronger publication-level contribution.
+3. **Platform expansion**: applying the same cascade and the same delivery platform to a second cargo. Two distinct expansion routes exist. (i) *Within the deliverable shortlist* — validate the platform with another L5-admissible cargo to convert the project from a single-target study into a delivery-platform study. (ii) *By extending the modality* — proteins like BDNF (the former top-cascade candidate, removed by L5 because its weight-relevant TrkB signaling is behind the blood-brain barrier) and NRG1 (removed because ERBB3 is broadly expressed) are high-evidence but require the platform to first solve BBB transit or restricted targeting; they are explicitly *not* deliverable today. Note that the well-known appetite-regulating gut peptides (CCK, PYY, GIP) are likewise excluded — by Layer 5 (receptor not restricted/accessible) or Layer 6 (native plasma half-life too short, and for PYY prohormone cleavage).
 
-4. **Indication expansion**: re-running the same cascade with `--indication t2d` (121 candidates) or `--indication mash` (83 candidates) to identify saRNA-deliverable cargos for type 2 diabetes or metabolic-associated steatohepatitis. The cascade architecture is indication-parameterized precisely so that future projects can specialize it without re-deriving the methodology.
+4. **Indication expansion**: re-running the same cascade with `--indication t2d` (17 candidates) or `--indication mash` (7 candidates) to identify saRNA-deliverable cargos for type 2 diabetes or metabolic-associated steatohepatitis. The cascade architecture is indication-parameterized precisely so that future projects can specialize it without re-deriving the methodology.
 4. **Methodology release**: the constraint cascade itself, with full target-blind implementation and provenance, will be released so that other groups can apply it to other modalities (mRNA, AAV, antibody-drug conjugate) and other indications.
 
 ---
 
 ## 9. Summary in one paragraph
 
-The current standard of care for chronic weight management (the GLP-1 receptor agonist class) has transformed treatment but leaves substantial unmet need — gastrointestinal intolerance, lean mass loss, rebound on discontinuation, β-cell dependency, injection administration, cost, and non-response. Our laboratory has developed a delivery platform — self-amplifying RNA encoded into a sublingual microneedle patch — that addresses several of these limitations but is fundamentally incompatible with the chemistry of the existing GLP-1 drugs. The platform's question is therefore not "what beats semaglutide" but "what natively-deliverable secreted protein addresses an unmet metabolic need that GLP-1 cannot reach." We built a target-blind, modality-constrained AI cascade that compresses the ~20,000 reviewed human protein-coding genes through five sequential evidence-based boolean gates plus a final opportunity ranker; specialized to obesity (the cascade's L2 evidence gate and L6 opportunity ranker take an indication parameter), it produces a 112-candidate obesity-scoped shortlist of signaling secreted proteins with obesity-relevant evidence that are also genuinely deliverable by saRNA. From this shortlist we selected GDF15 as the first cargo to validate experimentally — not because it ranks highest in any single score, but because it combines cascade admissibility (rank #10 of 112 in the obesity-scoped shortlist) with three independently verifiable derisking signals: the hyperemesis gravidarum natural experiment, characterization of the GFRAL receptor in 2017, and Phase 1 industrial validation of the GFRAL axis via NGM120. The wet-lab mouse data is the actual scientific test; the AI pipeline is the justification for choosing GDF15 to test first.
+The current standard of care for chronic weight management (the GLP-1 receptor agonist class) has transformed treatment but leaves substantial unmet need — gastrointestinal intolerance, lean mass loss, rebound on discontinuation, β-cell dependency, injection administration, cost, and non-response. Our laboratory has developed a delivery platform — self-amplifying RNA encoded into a sublingual microneedle patch — that addresses several of these limitations but is fundamentally incompatible with the chemistry of the existing GLP-1 drugs. The platform's question is therefore not "what beats semaglutide" but "what natively-deliverable secreted protein addresses an unmet metabolic need that GLP-1 cannot reach." We built a target-blind, modality-constrained AI cascade that compresses the ~20,000 reviewed human protein-coding genes through six sequential boolean gates plus a final opportunity ranker; specialized to obesity (the cascade's L2 evidence gate and L7 opportunity ranker take an indication parameter), it produces a 14-candidate obesity-scoped shortlist of signaling secreted proteins with obesity-relevant evidence that are also genuinely deliverable by saRNA. A data-driven Layer 5 (OmniPath receptor mapping + Human Protein Atlas tissue/secretome data + Allen Mouse Brain ISH) enforces systemic-endocrine deliverability, which is what removes higher-evidence but undeliverable proteins such as BDNF and NRG1 and lifts GDF15 to **#1 of 14** in this scope. We are explicit that this #1 is "first among deliverable targets," that it relies on Allen ISH to rescue the otherwise-undetectable GFRAL receptor, and that it is sensitive to the Layer 5 specificity threshold. From this shortlist we selected GDF15 as the first cargo to validate experimentally — not on the cascade score alone, but because cascade admissibility coincides with three independently verifiable derisking signals: the hyperemesis gravidarum natural experiment, characterization of the GFRAL receptor in 2017, and Phase 1 industrial validation of the GFRAL axis via NGM120. The wet-lab mouse data is the actual scientific test; the AI pipeline is the justification for choosing GDF15 to test first.

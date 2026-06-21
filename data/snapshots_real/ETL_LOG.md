@@ -104,6 +104,32 @@ The target is detectable in every source — the rank-1 evaluator should not reg
 
 ---
 
+## 6. Translational cargo suitability (L5) — `translational_cargo_suitability.tsv`
+
+Source: `data/etl/etl_translational_suitability.py`, run over the metabolic-L3
+candidate set (239 genes, the broadest scope so the snapshot serves every
+indication). Combines three public sources + one citable constant:
+- OmniPath REST `interactions` (`raw_dumps/omnipath/ligand_receptor_edges.tsv`) — cognate receptor = single-gene target with the most curated sources.
+- Human Protein Atlas `proteinatlas.tsv` (`raw_dumps/hpa/`) — `Secretome location` (C1a), `RNA tissue specificity` (C2ii), tissue distribution (C1b peripheral test).
+- Allen Mouse Brain ISH (`raw_dumps/allen/<RECEPTOR>_unionize.json`) — expression energy by structure, queried ONLY for brain-restricted receptors, to test circumventricular-organ (blood-accessible) localization.
+- Constant: CVO structure keyword list (Gross & Weindl 1987). Restricted-receptor cut (C2ii) = {Tissue enriched, Group enriched}.
+
+| metric | value |
+|---|---|
+| candidate rows (ligand has OmniPath receptor + HPA row) | 210 |
+| pass all four flags (C1a·C1b·C2i·C2ii) | 29 |
+| brain-restricted receptors needing Allen step | 6 |
+| of those, CVO-enriched (blood-accessible) | 1 (GFRAL only) |
+| MD5 (body) | `a87fb5bea8338bd4617b12e61d3e12e6` |
+
+Allen-checked receptors: GDF15→GFRAL **(CVO: area postrema/NTS energy ~3.28 vs behind-BBB ~0 → PASS)**; PROK2→PROKR2, PENK→OPRD1, NPS→NPSR1, TRH→TRHR, BPI→SLAMF9 (all behind-BBB / non-CVO → FAIL). Only GFRAL is rescued — it is below HPA bulk detection but Allen localizes it to the area postrema.
+
+Target-blindness: the ETL hard-codes no gene of interest; GFRAL's pass is produced
+by the generic CVO rule applied to Allen data. The CVO keyword list and the
+mouse→human extrapolation for GFRAL are the documented non-data inputs.
+
+---
+
 ## 5. Target-blind grep results
 
 ```

@@ -1,0 +1,211 @@
+gene_symbol	cognate_receptor	ligand_secretome	receptor_tissue_specificity	receptor_peripheral	receptor_brain_restricted	allen_cvo_struct	allen_cvo_energy	allen_bbb_energy	c1a_secreted_blood	c1b_blood_accessible	c2i_has_receptor	c2ii_restricted
+A2M	LRP1	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+ADCYAP1	ADCYAP1R1	Secreted in other tissues	Group enriched	True	False				False	True	True	True
+ADIPOQ	ADIPOR2	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+ADM	CALCRL	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+ADM2	CALCRL	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+ALKAL2	ALK	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+AMH	AMHR2	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+APLN	APLNR	Secreted in other tissues	Tissue enhanced	True	False				False	True	True	False
+APP	FPR2	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+AVP	AVPR2	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+BDNF	NTRK2	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+BMP2	BMPR2	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+BMP4	BMPR2	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+BMP7	BMPR2	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+BMP8A	BMPR2	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+BMP8B	BMPR1A	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+BPI	SLAMF9	Secreted to blood	Not detected	False	True	Subfornical organ	1.526	1.380	True	False	True	False
+BTC	EGFR	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CALCA	CALCRL	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CALCB	CALCRL	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CCK	CCKBR	Secreted to blood	Group enriched	True	False				True	True	True	True
+CCL1	CCR8	Secreted to blood	Tissue enriched	True	False				True	True	True	True
+CCL11	CCR3	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CCL2	CCR2	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CCL20	CCR6	Secreted to blood	Tissue enriched	True	False				True	True	True	True
+CCL22	CCR4	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CCL24	CCR3	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CCL27	CCR10	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CCL28	CCR10	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CCL3	CCR1	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CCL4	CCR5	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CCL5	CCR5	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CCL7	CCR1	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CCN1	ITGAV	Secreted to extracellular matrix	Low tissue specificity	True	False				False	True	True	False
+CCN3	NOTCH1	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+CCN6	SORL1	Secreted to extracellular matrix	Low tissue specificity	True	False				False	True	True	False
+CD40LG	CD40	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CGA	LHCGR	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CORT	SSTR1	Secreted in brain	Tissue enhanced	True	False				False	True	True	False
+CRH	CRHR1	Secreted to blood	Group enriched	True	False				True	True	True	True
+CSF1	CSF1R	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CSF2	CSF2RA	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CSF3	CSF3R	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CTF1	IL6ST	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+CX3CL1	CX3CR1	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CXCL1	CXCR2	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CXCL10	CXCR3	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CXCL12	CXCR4	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CXCL16	CXCR6	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CXCL2	CXCR2	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CXCL5	CXCR2	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CXCL8	CXCR2	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+CXCL9	CXCR3	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+EDA	EDAR	Secreted - unknown location	Tissue enhanced	True	False				False	True	True	False
+EFEMP1	EGFR	Secreted to extracellular matrix	Tissue enhanced	True	False				False	True	True	False
+EPGN	EGFR	Secreted in other tissues	Tissue enhanced	True	False				False	True	True	False
+EPO	EPOR	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+FASLG	FAS	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+FGA	ITGAX	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+FGF1	FGFR1	Secreted in other tissues	Low tissue specificity	True	False				False	True	True	False
+FGF19	FGFR4	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+FGF2	FGFR1	Secreted in other tissues	Low tissue specificity	True	False				False	True	True	False
+FGF21	FGFR4	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+FGF23	FGFR1	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+FGF5	FGFR1	Secreted in brain	Low tissue specificity	True	False				False	True	True	False
+FGF8	FGFR2	Secreted in other tissues	Tissue enriched	True	False				False	True	True	True
+FGF9	FGFR3	Secreted in other tissues	Tissue enhanced	True	False				False	True	True	False
+FLT3LG	FLT3	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+FNDC5	ITGAV	Intracellular and membrane	Low tissue specificity	True	False				False	True	True	False
+FSHB	FSHR	Secreted to blood	Group enriched	True	False				True	True	True	True
+GAL	GALR2	Secreted to blood	Tissue enriched	True	False				True	True	True	True
+GALP	GALR2	Secreted in brain	Tissue enriched	True	False				False	True	True	True
+GAST	CCKBR	Secreted to digestive system	Group enriched	True	False				False	True	True	True
+GCG	GLP1R	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+GDF11	ACVR2B	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+GDF15	GFRAL	Secreted to blood	Not detected	False	True	Nucleus of the solitary tract, gelatinous part	3.281	0.000	True	True	True	True
+GDF2	ACVRL1	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+GDF3	BMPR1B	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+GDF5	BMPR1B	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+GDF6	BMPR2	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+GDF7	BMPR2	Secreted in other tissues	Low tissue specificity	True	False				False	True	True	False
+GDNF	RET	Secreted in other tissues	Tissue enhanced	True	False				False	True	True	False
+GH1	GHR	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+GHRL	GHSR	Secreted to blood	Tissue enriched	True	False				True	True	True	True
+GIP	GIPR	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+GNRH1	GNRHR	Secreted to blood	Tissue enriched	True	False				True	True	True	True
+GNRH2	GNRHR	Secreted to blood	Tissue enriched	True	False				True	True	True	True
+GPI	AMFR	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+GREM1	KDR	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+GREM2	BMP4	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+GRN	TNFRSF1A	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+HBEGF	EGFR	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+HMGB1	AGER	Secreted to blood	Tissue enriched	True	False				True	True	True	True
+IAPP	CALCR	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+IFNA1	IFNAR1	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+IFNA2	IFNAR1	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+IFNG	IFNGR1	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+IFNK	IFNAR1	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+IFNL3	IL10RB	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+IGF1	IGF1R	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+IGF2	IGF2R	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+IGFBP1	IGF1	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+IGFBP2	IGF1	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+IGFBP3	IGF1	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+IGFBP4	FZD8	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+IGFBP5	IGF1	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+IGFBP6	IGF2	Secreted to blood	Tissue enriched	True	False				True	True	True	True
+IGFBP7	MPIG6B	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+IL10	IL10RA	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+IL11	IL11RA	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+IL12B	IL12RB1	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+IL13	IL13RA1	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+IL15	IL15RA	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+IL16	CD4	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+IL17A	IL17RA	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+IL17B	IL17RB	Secreted to blood	Group enriched	True	False				True	True	True	True
+IL18	IL18R1	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+IL19	IL20RA	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+IL1A	IL1R1	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+IL1B	IL1R1	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+IL1F10	IL1R1	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+IL2	IL2RG	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+IL22	IL22RA1	Secreted to blood	Tissue enriched	True	False				True	True	True	True
+IL23A	IL12RB1	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+IL25	IL17RB	Secreted to blood	Group enriched	True	False				True	True	True	True
+IL27	IL27RA	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+IL31	IL31RA	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+IL32	ITGB3	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+IL33	IL1RL1	Secreted to blood	Group enriched	True	False				True	True	True	True
+IL34	CSF1R	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+IL36G	IL1RL2	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+IL37	IL18R1	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+IL4	IL4R	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+IL5	IL5RA	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+IL6	IL6R	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+IL7	IL7R	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+IL9	IL9R	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+INHA	TGFBR3	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+INHBA	ACVR2A	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+INHBB	ACVR2A	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+INHBC	ACVR2B	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+INHBE	ACVR2A	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+INS	INSR	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+KL	IGF1R	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+LHB	LHCGR	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+LIF	IL6ST	Secreted in other tissues	Low tissue specificity	True	False				False	True	True	False
+LTA	TNFRSF1A	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+LTBP3	ITGB5	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+MIA	CDH7	Secreted to blood	Group enriched	True	False				True	True	True	True
+MIF	CD74	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+MLN	MLNR	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+MSTN	ACVR2B	Secreted in other tissues	Low tissue specificity	True	False				False	True	True	False
+NAMPT	INSR	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+NGF	NTRK1	Secreted in other tissues	Tissue enhanced	True	False				False	True	True	False
+NMI	SOX10	Secreted to blood	Group enriched	True	False				True	True	True	True
+NMS	NMUR1	Secreted in brain	Tissue enhanced	True	False				False	True	True	False
+NMU	NMUR2	Secreted in other tissues	Tissue enhanced	True	False				False	True	True	False
+NODAL	ACVR2B	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+NPB	NPBWR1	Secreted in other tissues	Tissue enhanced	True	False				False	True	True	False
+NPPA	NPR1	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+NPPB	NPR1	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+NPS	NPSR1	Secreted in brain	Not detected	False	True		0.000	5.401	False	False	True	False
+NPVF	NPFFR1	Secreted in other tissues	Group enriched	True	False				False	True	True	True
+NPY	NPY2R	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+NRG1	ERBB3	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+NRG4	ERBB4	Secreted to digestive system	Tissue enhanced	True	False				False	True	True	False
+OSM	IL6ST	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+OSTN	NPR3	Secreted in other tissues	Tissue enhanced	True	False				False	True	True	False
+OXT	OXTR	Secreted to blood	Tissue enriched	True	False				True	True	True	True
+PCSK1N	GPR171	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+PDGFB	PDGFRB	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+PDGFC	PDGFRA	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+PDGFD	PDGFRB	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+PENK	OPRD1	Secreted in other tissues	Tissue enhanced	False	True		0.000	5.215	False	False	True	False
+PGF	FLT1	Secreted to blood	Tissue enriched	True	False				True	True	True	True
+PNOC	OPRL1	Secreted to blood	Group enriched	True	False				True	True	True	True
+POMC	MC5R	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+PRL	PRLR	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+PRLH	PRLHR	Secreted in brain	Tissue enhanced	True	False				False	True	True	False
+PROK2	PROKR2	Secreted to blood	Tissue enhanced	False	True	Nucleus of the solitary tract, commissural part	5.408	13.462	True	False	True	False
+PTH	PTH1R	Secreted to blood	Tissue enriched	True	False				True	True	True	True
+PTN	PTPRZ1	Secreted to blood	Tissue enriched	True	False				True	True	True	True
+PYY	NPY4R	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+RETN	GPR25	Secreted to blood	Tissue enriched	True	False				True	True	True	True
+S100A8	TLR4	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+S100A9	TLR4	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+SCT	SCTR	Secreted to blood	Group enriched	True	False				True	True	True	True
+SLPI	CD4	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+SPP1	CD44	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+SPX	GALR2	Secreted to blood	Tissue enriched	True	False				True	True	True	True
+SST	SSTR2	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+TAC3	TACR3	Secreted in female reproductive system	Group enriched	True	False				False	True	True	True
+TAFA5	FPR2	Secreted in brain	Tissue enhanced	True	False				False	True	True	False
+TGFB1	TGFBR2	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+TGFB2	TGFBR1	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+TIMP1	CD63	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+TNF	TNFRSF1A	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+TNFSF10	TNFRSF10A	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+TNFSF11	TNFRSF11A	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+TNFSF12	TNFRSF12A	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+TNFSF13B	TNFRSF13B	Secreted to blood	Group enriched	True	False				True	True	True	True
+TNFSF14	TNFRSF14	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+TRH	TRHR	Secreted in other tissues	Not detected	False	True		0.000	11.738	False	False	True	False
+TSLP	IL7R	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+UCN3	CRHR2	Secreted to blood	Tissue enriched	True	False				True	True	True	True
+VEGFA	KDR	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+VEGFB	FLT1	Secreted to blood	Tissue enriched	True	False				True	True	True	True
+VEGFC	FLT4	Secreted to blood	Low tissue specificity	True	False				True	True	True	False
+VIP	VIPR1	Secreted to blood	Tissue enhanced	True	False				True	True	True	False
+YBX1	NEIL2	Intracellular and membrane	Low tissue specificity	True	False				False	True	True	False
