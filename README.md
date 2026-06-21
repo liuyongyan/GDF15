@@ -5,30 +5,35 @@ validation target for the saRNA + sublingual-microneedle delivery platform,
 starting from a constraint-driven shortlist over all ~20k human protein-coding
 genes.
 
-The work here is a **honest reckoning**. GDF15 ranks **#1 of 14**
-obesity-scoped candidates that survive the full cascade — but only once a
-data-driven **translational cargo suitability** gate (L5) is enforced.
-Without that gate, on disease-evidence and clinical-phase alone, GDF15 placed
-#10 of 112 (top decile, not first); and a *naive* bulk-transcriptomic version
-of L5 would have **excluded** GDF15 entirely, because its receptor GFRAL is
-below the detection limit of bulk RNA atlases. Its #1 placement therefore
-depends on two things stated plainly here: (a) enforcing systemic-endocrine
-deliverability, which removes higher-evidence but non-deliverable competitors
-such as BDNF and NRG1 (BBB-restricted / broadly-expressed receptors), and
-(b) Allen Mouse Brain ISH localizing GFRAL to the area postrema (a
-blood-accessible circumventricular organ). The result is also sensitive to the
-L5 receptor-specificity threshold (see the sensitivity note in
-`TARGET_SELECTION_RATIONALE.md`). Three **cascade-external derisking signals**
-— a natural human knockout experiment (hyperemesis gravidarum), the GFRAL
-receptor characterized in 2017, and an active Phase-1 industry asset (NGM120) —
-independently corroborate the choice. See `TARGET_SELECTION_RATIONALE.md` for
-the full non-expert narrative.
+The work here is a **honest reckoning**. The data cascade does not crown GDF15.
+It narrows ~20k genes to a focused, ranked shortlist of **17** deliverable
+obesity cargos, in which GDF15 ranks **#3** — behind CCK and HMGB1. The final
+selection of GDF15 is then a **human-synthesis step** (§6 of the rationale),
+which passes over the two higher-ranked candidates for clear reasons (CCK: native
+half-life in minutes, no evidence the unmodified peptide works sustained; HMGB1:
+a nuclear damage signal misannotated as a secreted ligand) and selects GDF15 on
+three **cascade-external derisking signals**: a natural human knockout experiment
+(hyperemesis gravidarum — direct proof the *native* protein, sustained, drives
+weight loss), the GFRAL receptor characterized in 2017, and an active Phase-1
+industry asset (NGM120).
+
+Two honesty notes are kept explicit throughout: the new data-driven
+**translational cargo suitability** gate (L5) is what makes the shortlist
+deliverable — it removes higher-evidence but undeliverable proteins like BDNF and
+NRG1 (BBB-restricted / broadly-expressed receptors); and GDF15 survives L5 only
+because **Allen Mouse Brain ISH** localizes its receptor GFRAL (below bulk-RNA
+detection) to the area postrema, a blood-accessible circumventricular organ.
+Earlier revisions ran the deliverability judgments as a mechanical "L6 expert"
+gate, which made GDF15 #1; that gate is removed because it was target-aware and,
+for the half-life mode, in tension with GDF15's own (hours-scale) half-life — the
+reasoning now lives openly in §6. See `TARGET_SELECTION_RATIONALE.md` for the
+full non-expert narrative.
 
 ## Repository layout
 
 ```
 TARGET_SELECTION_RATIONALE.md   Main deliverable — narrative + cascade results
-cascade.py                       7-layer constraint cascade implementation
+cascade.py                       6-layer constraint cascade implementation
 data/
   snapshots_real/                ETL'd target-evidence snapshots (committed)
     opentargets_metabolic_associations.tsv   (Open Targets v26.03)
@@ -56,17 +61,18 @@ python3 cascade.py --indication mash               # MASH shortlist
 ```
 
 Expected cascade chain by indication scope (with current snapshots).
-L1-L6 are boolean gates (filter); L7 is the opportunity ranker applied
-to the L6 admissible set.
+L1-L5 are boolean gates (filter); L6 is the opportunity ranker applied
+to the L5 admissible set. The cascade ends at the ranked shortlist; the
+single-cargo selection of GDF15 is a separate human-synthesis step (§6).
 
-| Indication | L1 | L2 | L3 | L4 | L5 | L6 | GDF15 L7 rank |
-|---|---|---|---|---|---|---|---|
-| `metabolic` (broadest) | 1921 | 852 | 239 | 239 | 29 | 26 | #3 of 26 |
-| `obesity` (this paper) | 1921 | 426 | 128 | 128 | 17 | **14** | **#1 of 14** |
-| `t2d` | 1921 | 460 | 139 | 139 | 19 | 17 | — |
-| `mash` | 1921 | 277 | 93 | 93 | 9 | 7 | — |
+| Indication | L1 | L2 | L3 | L4 | L5 | GDF15 L6 rank |
+|---|---|---|---|---|---|---|
+| `metabolic` (broadest) | 1921 | 852 | 239 | 239 | 29 | #5 of 29 |
+| `obesity` (this paper) | 1921 | 426 | 128 | 128 | **17** | **#3 of 17** |
+| `t2d` | 1921 | 460 | 139 | 139 | 19 | #11 of 19 |
+| `mash` | 1921 | 277 | 93 | 93 | 9 | #1 of 9 |
 
-The seven layers in execution order:
+The six layers in execution order:
 
 | Layer | Role | What it does |
 |---|---|---|
@@ -75,8 +81,15 @@ The seven layers in execution order:
 | L3 | gate | Druggability (5 signaling secreted-protein classes only) |
 | L4 | gate | Historical safety audit (vacuous for this modality — itself a finding) |
 | L5 | gate | **Translational cargo suitability (DATA-DRIVEN)** — systemic-endocrine deliverability from OmniPath receptor mapping + HPA tissue/secretome + Allen Mouse Brain ISH: ligand secreted-to-blood, cognate receptor blood-accessible (peripheral or circumventricular-organ), receptor restricted. Only `area-postrema` receptors like GFRAL pass via the CVO route. |
-| L6 | gate | Expert deliverability curation (4 saRNA-specific failure modes: short half-life, prohormone processing, obligate heterodimer, UniProt misclassification) |
-| L7 | rank | Opportunity index = evidence / (1 + max_clinical_phase), indication-scoped |
+| L6 | rank | Opportunity index = evidence / (1 + max_clinical_phase), indication-scoped |
+
+Deliverability failure modes that public databases do not cover (short native
+half-life, prohormone processing, obligate heterodimer, secretome misannotation)
+are **not** a cascade gate. They are applied as qualitative criteria in the §6
+human-synthesis step that picks GDF15 from the shortlist — not as a mechanical
+filter. (An earlier revision ran them as a hand-curated "L6 expert" gate; it is
+removed because it was target-aware and, for the half-life mode, inconsistent
+with GDF15's own hours-scale half-life.)
 
 ## What is not in this repo
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""7-layer constraint cascade for saRNA-deliverable secreted-protein target selection.
+"""6-layer constraint cascade for saRNA-deliverable secreted-protein target selection.
 
-Cascade (6 gates then 1 ranker — execution order = layer number):
+Cascade (5 gates then 1 ranker — execution order = layer number):
   L1 — Modality compatibility   : secreted + 60bp ≤ ORF ≤ 4500bp (saRNA payload)
   L2 — Disease evidence         : OT score ≥ 0.05 OR ≥1 GWAS hit OR ≥50 PubMed.
                                   L2 is *indication-parameterized*: the scope of
@@ -31,19 +31,21 @@ Cascade (6 gates then 1 ranker — execution order = layer number):
                                     C2i cognate receptor exists (OmniPath)
                                     C2ii receptor restricted (HPA tissue
                                         specificity ∈ {enriched, group enriched})
-  L6 — Expert deliverability    : manual curation catching 4 saRNA-specific
-                                  failure modes that L1's coarse modality
-                                  filter does not detect:
-                                    (a) native plasma half-life too short
-                                    (b) requires tissue-specific PC1/2 cleavage
-                                    (c) obligate heterodimer (multi-ORF)
-                                    (d) misclassified as signaling secreted
-  L7 — Opportunity ranking      : evidence / (1 + max_clinical_phase), applied
-                                  to the L6 admissible set. Indication-scoped
+  L6 — Opportunity ranking      : evidence / (1 + max_clinical_phase), applied
+                                  to the L5 admissible set. Indication-scoped
                                   (sums OT and counts GWAS only over the chosen
                                   indication). This is the only layer that
-                                  produces a score and ordering; L1-L6 are
+                                  produces a score and ordering; L1-L5 are
                                   boolean gates.
+
+Deliverability failure modes that public databases do not cover (short native
+half-life, prohormone processing, obligate heterodimer, secretome misannotation)
+are NOT a cascade gate. They are applied as qualitative selection criteria in the
+human-synthesis step (§6 of TARGET_SELECTION_RATIONALE.md) that picks one cargo
+from the ranked shortlist — not as a mechanical filter. Earlier revisions ran
+them as a hand-curated "L6 expert" gate; that gate is removed because it was
+target-aware and, for the half-life mode, in tension with GDF15's own (hours-
+scale) half-life. See §6 for the reasoning that replaced it.
 
 Data inputs (all under data/snapshots_real/ and data/raw_dumps/):
   - opentargets_metabolic_associations.tsv (Open Targets 26.03)
@@ -55,7 +57,7 @@ Data inputs (all under data/snapshots_real/ and data/raw_dumps/):
 
 Usage:
     python3 cascade.py                           # default --indication metabolic
-    python3 cascade.py --indication obesity      # obesity-scoped L2 + L7
+    python3 cascade.py --indication obesity      # obesity-scoped L2 + L6
     python3 cascade.py --indication obesity --gene GDF15   # single-gene trace
 """
 from __future__ import annotations
@@ -90,10 +92,10 @@ L3_DRUGGABLE_CLASSES = {
     'secreted_neuropeptide',    # CNS signaling
 }
 
-L7_PUBMED_WEIGHT = 0.1        # how much log10(pubmed+1) adds to evidence
-L7_GWAS_WEIGHT = 0.5          # bonus per GWAS hit (capped at 10)
+L6_PUBMED_WEIGHT = 0.1        # how much log10(pubmed+1) adds to evidence
+L6_GWAS_WEIGHT = 0.5          # bonus per GWAS hit (capped at 10)
 
-# Indication scopes for L2 evidence gating and L7 opportunity ranking.
+# Indication scopes for L2 evidence gating and L6 opportunity ranking.
 # Each scope defines (a) the Open Targets disease names that count toward
 # evidence and (b) the GWAS Catalog trait names that count toward GWAS hits.
 # 'use_pubmed': PubMed counts in our snapshot are metabolic-context aggregated
@@ -140,59 +142,6 @@ L4_KNOWN_FAILURES = {
     "CNR1",   # rimonabant withdrawn (psychiatric AEs); GPCR → excluded at L1
     "HTR2C",  # lorcaserin withdrawn (CV/cancer signal); GPCR → excluded at L1
     "DGAT1",  # multiple Phase 2 failures; ER membrane enzyme → excluded at L1
-}
-
-# L6 — expert deliverability curation. L1 only checks structural modality
-# compatibility (secreted + ORF size). The following failure modes require
-# pharmacology/cell-biology knowledge not present in our public databases.
-# Each entry includes the failure-mode tag for audit traceability.
-L6_EXPERT_EXCLUSIONS = {
-    # ---- (a) native plasma half-life too short for saRNA-sustained therapy ----
-    # saRNA delivers steady-state expression over days; clearance faster than
-    # ~30 min means the steady-state plasma concentration cannot reach the
-    # therapeutic window regardless of expression rate. All clinical programs
-    # against these targets use chemically-modified (Fc-fusion, lipidated, or
-    # PEGylated) analogs that the saRNA modality cannot encode.
-    "FGF21": "short_half_life",       # native t½ ~30 min in humans
-    "CCK":   "short_half_life",       # cleared in minutes
-    "PYY":   "short_half_life",       # PYY3-36 t½ ~8-15 min
-    "GIP":   "short_half_life",       # native t½ ~7 min
-    "GCG":   "short_half_life",       # glucagon ~5 min; GLP-1 ~2 min
-    "GHRL":  "short_half_life",       # ghrelin ~30 min
-
-    # ---- (b) requires tissue-specific PC1/2 (or other convertase) cleavage ----
-    # Prohormone → active peptide cleavage requires PC1/PC2 (PCSK1/PCSK2),
-    # which are expressed only in specialized neuroendocrine cells. Mucosal
-    # cells producing saRNA-encoded protein cannot perform this processing.
-    "POMC":   "prohormone_processing",   # → α-MSH, β-endorphin, ACTH
-    "PCSK1N": "prohormone_processing",   # proSAAS
-    "INS":    "prohormone_processing",   # → insulin (also β-cell-specific PC1/2)
-    "IAPP":   "prohormone_processing",   # amylin (needs PC1/2 + amidation)
-    "GAST":   "prohormone_processing",   # gastrin
-    "NPY":    "prohormone_processing",   # neuropeptide Y
-    "AGRP":   "prohormone_processing",   # agouti-related peptide
-
-    # ---- (c) obligate heterodimer; single-ORF expression yields no function ----
-    # Two-subunit cytokines/growth-factors require co-expression of both
-    # chains in the same cell at matched stoichiometry. saRNA encodes one ORF;
-    # multi-cistronic saRNA constructs exist but are an open engineering
-    # problem outside the current platform scope.
-    "IL12A": "heterodimer_required",   # p35 (pairs with IL12B in IL-12)
-    "IL12B": "heterodimer_required",   # p40 (shared by IL-12 and IL-23)
-    "IL23A": "heterodimer_required",   # p19 (pairs with IL12B in IL-23)
-    "EBI3":  "heterodimer_required",   # subunit of IL-27 and IL-35
-    "IL27":  "heterodimer_required",   # p28 (pairs with EBI3 to form IL-27)
-    "INHBC": "heterodimer_required",   # inhibin βC; activin-C homodimer activity unclear
-    "INHBE": "heterodimer_required",   # inhibin βE; activin-E pharmacology immature
-
-    # ---- (d) misclassified by UniProt as secreted-signaling ----
-    # Annotation pipelines flag these as "secreted" because they can be
-    # detected extracellularly, but their primary biological role is not as
-    # an extracellular signaling ligand. Treating them as drug-target cargos
-    # is biologically inappropriate.
-    "MAPT":  "misclassified_secreted",  # tau — intracellular microtubule binding
-    "HMGB1": "misclassified_secreted",  # nuclear chromatin DAMP only when released
-    "LTBP3": "misclassified_secreted",  # latent TGFβ scaffold, not a ligand
 }
 
 
@@ -377,18 +326,11 @@ def L5(gene: str, db) -> bool:
     return db['tcs_pass'].get(gene, False)
 
 
-def L6(gene: str, db) -> bool:
-    """Expert deliverability curation: exclude 4 saRNA-specific failure modes
-    that L1's coarse modality filter does not detect (see L6_EXPERT_EXCLUSIONS
-    dict for per-gene rationale)."""
-    return gene not in L6_EXPERT_EXCLUSIONS
-
-
-def L7_opportunity(gene: str, db, scope) -> tuple[float, float, int, float, int, int]:
-    """Layer 7 ranking: evidence / (1 + max_clinical_phase), indication-scoped.
+def L6_opportunity(gene: str, db, scope) -> tuple[float, float, int, float, int, int]:
+    """Layer 6 ranking: evidence / (1 + max_clinical_phase), indication-scoped.
 
     This is the only cascade layer that produces a score rather than a boolean.
-    Applied to the L6 admissible set. Sums OT scores only over the scope's
+    Applied to the L5 admissible set. Sums OT scores only over the scope's
     diseases; counts GWAS hits only over the scope's traits; uses PubMed only
     when scope's use_pubmed is True.
     """
@@ -406,8 +348,8 @@ def L7_opportunity(gene: str, db, scope) -> tuple[float, float, int, float, int,
         except ValueError:
             pm = 0
     evidence = (ot_sum
-                + L7_GWAS_WEIGHT * min(gwas_n, 10)
-                + L7_PUBMED_WEIGHT * math.log10(pm + 1))
+                + L6_GWAS_WEIGHT * min(gwas_n, 10)
+                + L6_PUBMED_WEIGHT * math.log10(pm + 1))
     phase, _ = effective_max_phase(gene, db, scope)
     opp = evidence / (1 + phase)
     return opp, evidence, phase, ot_sum, gwas_n, pm
@@ -421,7 +363,7 @@ def main() -> int:
                                   formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--indication", default="metabolic",
                     choices=sorted(INDICATION_SCOPES.keys()),
-                    help="Indication scope for L2 evidence gating and L7 "
+                    help="Indication scope for L2 evidence gating and L6 "
                          "opportunity ranking (default: metabolic, all 4 "
                          "indications combined).")
     ap.add_argument("--gene", default=None,
@@ -441,9 +383,8 @@ def main() -> int:
     l3 = {g for g in l2 if L3(g, db)}
     l4 = {g for g in l3 if L4(g, db)}
     l5 = {g for g in l4 if L5(g, db)}
-    l6 = {g for g in l5 if L6(g, db)}
 
-    print(f"Cascade (gates): {len(universe)} -> L1={len(l1)} -> L2={len(l2)} -> L3={len(l3)} -> L4={len(l4)} -> L5={len(l5)} -> L6={len(l6)}")
+    print(f"Cascade (gates): {len(universe)} -> L1={len(l1)} -> L2={len(l2)} -> L3={len(l3)} -> L4={len(l4)} -> L5={len(l5)}")
 
     # L5 audit: report which surviving-L4 candidates the data-driven
     # translational-suitability gate removed, and on which failed criterion.
@@ -467,18 +408,7 @@ def main() -> int:
         for tag, genes in sorted(by_fail.items()):
             print(f"  {tag:<30}: {len(genes)}")
 
-    # L6 audit: report what the expert deliverability layer excluded and why
-    l6_excluded = sorted(l5 - l6)
-    if l6_excluded:
-        from collections import defaultdict
-        by_mode = defaultdict(list)
-        for g in l6_excluded:
-            by_mode[L6_EXPERT_EXCLUSIONS[g]].append(g)
-        print("L6 exclusions by mode:")
-        for mode, genes in sorted(by_mode.items()):
-            print(f"  {mode:<26}: {', '.join(genes)}")
-
-    admissible = l6
+    admissible = l5
 
     # Single-gene trace mode
     if args.gene:
@@ -488,8 +418,7 @@ def main() -> int:
                                   (2, "disease evidence", lambda g, d: L2(g, d, scope)),
                                   (3, "druggability", lambda g, d: L3(g, d)),
                                   (4, "safety audit", lambda g, d: L4(g, d)),
-                                  (5, "translational suitability", lambda g, d: L5(g, d)),
-                                  (6, "expert deliverability", lambda g, d: L6(g, d))]:
+                                  (5, "translational suitability", lambda g, d: L5(g, d))]:
             ok = fn(g, db)
             note = ""
             if layer == 5:
@@ -501,14 +430,12 @@ def main() -> int:
                         + (f" recv={row['cognate_receptor']}" if row['cognate_receptor'] else ""))
                 else:
                     note = "  [absent from TCS snapshot]"
-            if layer == 6 and not ok:
-                note = f"  [{L6_EXPERT_EXCLUSIONS[g]}]"
             print(f"  L{layer} {name:<26}: {'✓ PASS' if ok else '✗ FAIL'}{note}")
         if g in admissible:
-            opp, ev, ph, ot_s, gw, pm = L7_opportunity(g, db, scope)
-            scored = sorted(admissible, key=lambda x: -L7_opportunity(x, db, scope)[0])
+            opp, ev, ph, ot_s, gw, pm = L6_opportunity(g, db, scope)
+            scored = sorted(admissible, key=lambda x: -L6_opportunity(x, db, scope)[0])
             rank_full = scored.index(g) + 1
-            print(f"  L7 opportunity rank = #{rank_full} of {len(admissible)} ({args.indication}-scoped)")
+            print(f"  L6 opportunity rank = #{rank_full} of {len(admissible)} ({args.indication}-scoped)")
             pm_label = f"PubMed_metabolic={pm}" if scope['use_pubmed'] else "PubMed=n/a"
             print(f"     score={opp:.3f}  OT_sum={ot_s:.3f} GWAS={gw} {pm_label} max_phase={ph}")
             _, in_scope_rows = effective_max_phase(g, db, scope)
@@ -524,12 +451,12 @@ def main() -> int:
                     print(f"       {cid:<15} phase={p}  ind={ind:<20}  {flag}")
         return 0
 
-    # L7 ranking output
-    scored = [(g, *L7_opportunity(g, db, scope)) for g in admissible]
+    # L6 ranking output
+    scored = [(g, *L6_opportunity(g, db, scope)) for g in admissible]
     scored.sort(key=lambda x: -x[1])
 
     print(f"\n{'='*100}")
-    print(f"L7 RANKING — top 30 of {len(admissible)} cascade-admissible ({args.indication}-scoped, by opportunity index)")
+    print(f"L6 RANKING — top 30 of {len(admissible)} cascade-admissible ({args.indication}-scoped, by opportunity index)")
     print(f"{'='*100}")
     print(f"{'#':<4} {'Gene':<12} {'Opp':>6} {'Evid':>5} {'Ph':>3} {'OTsum':>5} {'GWAS':>5} {'PubMed':>6} {'Class':<25}")
     for i, (g, opp, ev, ph, ot_s, gw, pm) in enumerate(scored[:30], 1):
