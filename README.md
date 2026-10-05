@@ -5,10 +5,18 @@ validation target for the saRNA + sublingual-microneedle delivery platform,
 starting from a constraint-driven shortlist over all ~20k human protein-coding
 genes.
 
+The project has **two methodological pillars**: (1) the saRNA + sublingual-microneedle
+**delivery platform**, and (2) an **AI-driven target-discovery methodology**. The
+constraint cascade below was not hand-designed — a **multi-agent LLM system inspired
+by Stanford's STORM** designed it, and **AI reasoning** made the final cargo selection
+from its output. The humans supplied the clinical question and the delivery constraint,
+validated every layer, and retain scientific accountability. See §4 of
+`TARGET_SELECTION_RATIONALE.md` for the full human/AI division of labor.
+
 The work here is a **honest reckoning**. The data cascade does not crown GDF15.
 It narrows ~20k genes to a focused, ranked shortlist of **17** deliverable
 obesity cargos, in which GDF15 ranks **#3** — behind CCK and HMGB1. The final
-selection of GDF15 is then a **human-synthesis step** (§6 of the rationale),
+selection of GDF15 is then an **AI-synthesis step**, validated by the authors (§7 of the rationale),
 which passes over the two higher-ranked candidates for clear reasons (CCK: native
 half-life in minutes, no evidence the unmodified peptide works sustained; HMGB1:
 a nuclear damage signal misannotated as a secreted ligand) and selects GDF15 on
@@ -26,7 +34,7 @@ detection) to the area postrema, a blood-accessible circumventricular organ.
 Earlier revisions ran the deliverability judgments as a mechanical "L6 expert"
 gate, which made GDF15 #1; that gate is removed because it was target-aware and,
 for the half-life mode, in tension with GDF15's own (hours-scale) half-life — the
-reasoning now lives openly in §6. See `TARGET_SELECTION_RATIONALE.md` for the
+reasoning now lives openly in §7. See `TARGET_SELECTION_RATIONALE.md` for the
 full non-expert narrative.
 
 ## Repository layout
@@ -63,7 +71,7 @@ python3 cascade.py --indication mash               # MASH shortlist
 Expected cascade chain by indication scope (with current snapshots).
 L1-L5 are boolean gates (filter); L6 is the opportunity ranker applied
 to the L5 admissible set. The cascade ends at the ranked shortlist; the
-single-cargo selection of GDF15 is a separate human-synthesis step (§6).
+single-cargo selection of GDF15 is a separate AI-synthesis step, validated by the authors (§7).
 
 | Indication | L1 | L2 | L3 | L4 | L5 | GDF15 L6 rank |
 |---|---|---|---|---|---|---|
@@ -85,8 +93,8 @@ The six layers in execution order:
 
 Deliverability failure modes that public databases do not cover (short native
 half-life, prohormone processing, obligate heterodimer, secretome misannotation)
-are **not** a cascade gate. They are applied as qualitative criteria in the §6
-human-synthesis step that picks GDF15 from the shortlist — not as a mechanical
+are **not** a cascade gate. They are applied as qualitative criteria in the §7
+AI-synthesis step (validated by the authors) that picks GDF15 from the shortlist — not as a mechanical
 filter. (An earlier revision ran them as a hand-curated "L6 expert" gate; it is
 removed because it was target-aware and, for the half-life mode, inconsistent
 with GDF15's own hours-scale half-life.)
